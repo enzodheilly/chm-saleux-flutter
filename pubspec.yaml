@@ -1,0 +1,51 @@
+name: chm_mobile
+description: "A new Flutter project."
+publish_to: "none"
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # --- ✅ DEPENDANCES AJOUTÉES ---
+  http: ^1.2.0
+  flutter_secure_storage: ^10.0.0
+  jwt_decoder: ^2.0.1
+  fl_chart: ^1.1.1
+  flutter_slidable: ^3.0.0
+  provider: ^6.1.1
+  font_awesome_flutter: ^10.7.0
+  google_sign_in: ^7.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+  # ✅ Outil de génération du splash (doit être ici)
+  flutter_native_splash: ^2.4.1
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+
+# ✅ CONFIG SPLASH SCREEN
+flutter_native_splash:
+  color: "#06060B"
+  image: assets/images/logo.png
+
+  android: true
+  ios: true
+
+  # ✅ Android 12+ (obligatoire sinon il met l'icône par défaut)
+  android_12:
+    color: "#06060B"
+    image: assets/images/logo.png
