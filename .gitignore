@@ -43,3 +43,17 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# --- SÉCURITÉ PERSONNALISÉE ---
+# Fichiers d'environnement (clés API, URL secrètes)
+.env
+.env.*
+
+# Signatures de l'application (Android)
+*.keystore
+*.jks
+*.p12
+*.pem
+
+# Configuration VS Code (souvent mieux de le cacher)
+.vscode/
