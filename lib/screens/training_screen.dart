@@ -169,37 +169,105 @@ class _TrainingScreenState extends State<TrainingScreen> {
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
-            // ✅ Titre seulement en mode catalogue
+            // ✅ HEADER PRO (uniquement mode catalogue)
             if (widget.targetDate == null)
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
-                  child: Text(
-                    "CATALOGUE",
-                    style: TextStyle(
-                      color: cs.onSurface,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 28,
-                      letterSpacing: 1.0,
-                      fontStyle: FontStyle.italic,
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(22),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.04),
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.06),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "ENTRAÎNEMENT",
+                              style: TextStyle(
+                                color: cs.onSurface,
+                                fontWeight: FontWeight.w900,
+                                fontStyle: FontStyle.italic,
+                                letterSpacing: -0.6,
+                                fontSize: 28,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              "Choisis un programme ou crée ta séance.",
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.60),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                                height: 1.1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
 
-            // ✅ Bouton Mode Libre version Glass (tu le gardes tel quel)
+            // ✅ SECTION 1 : CRÉATION (uniquement en mode catalogue)
             if (widget.targetDate == null)
-              SliverToBoxAdapter(
+              const SliverToBoxAdapter(child: SizedBox(height: 10)),
+
+            if (widget.targetDate == null)
+              const SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: _GlassCreateCard(accent: clubOrange),
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: _SectionHeader(
+                    title: "Créer une séance",
+                    icon: Icons.edit_calendar_rounded,
+                  ),
                 ),
               ),
 
             if (widget.targetDate == null)
-              const SliverToBoxAdapter(child: SizedBox(height: 30)),
+              const SliverToBoxAdapter(child: SizedBox(height: 12)),
 
-            // ✅ Filtres version Glass (tu les gardes tel quel)
+            if (widget.targetDate == null)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: _GlassCreateCard(
+                    accent: clubOrange,
+                    onTap: () {
+                      // TODO: brancher ta navigation "Mode libre"
+                    },
+                  ),
+                ),
+              ),
+
+            if (widget.targetDate == null)
+              const SliverToBoxAdapter(child: SizedBox(height: 20)),
+
+            // ✅ SECTION 2 : CATALOGUE
+            if (widget.targetDate == null)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: _SectionHeader(
+                    title: "Catalogue",
+                    icon: Icons.grid_view_rounded,
+                  ),
+                ),
+              ),
+
+            if (widget.targetDate == null)
+              const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
+            // ✅ Filtres (si tu en ajoutes plus tard)
             if (widget.targetDate == null)
               SliverToBoxAdapter(
                 child: SizedBox(
@@ -209,15 +277,16 @@ class _TrainingScreenState extends State<TrainingScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     physics: const BouncingScrollPhysics(),
                     children: const [
-                      // si tes chips ont besoin d'accent, remets-les comme avant
+                      // chips si besoin
                     ],
                   ),
                 ),
               ),
 
             if (widget.targetDate == null)
-              const SliverToBoxAdapter(child: SizedBox(height: 20)),
+              const SliverToBoxAdapter(child: SizedBox(height: 18)),
 
+            // ✅ LISTE DES PROGRAMMES (catalogue + planning)
             FutureBuilder<List<dynamic>>(
               future: _programsFuture,
               builder: (context, snapshot) {
@@ -247,7 +316,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
 
                 final allPrograms = snapshot.data!;
 
-                // ✅ Groupement identique à ton code
+                // ✅ Groupement identique
                 Map<String, List<dynamic>> groupedPrograms = {};
                 for (var p in allPrograms) {
                   String groupName = p['muscleGroup'] ?? "Autre";
@@ -302,66 +371,153 @@ class _TrainingScreenState extends State<TrainingScreen> {
   }
 }
 
-// --- WIDGETS GLASS ---
+// =====================
+// WIDGETS
+// =====================
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final IconData icon;
+
+  const _SectionHeader({required this.title, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: const Color(0xFFF57809)),
+        const SizedBox(width: 8),
+        Text(
+          title.toUpperCase(),
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.75),
+            fontWeight: FontWeight.w900,
+            fontSize: 12,
+            letterSpacing: 1.1,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Container(height: 1, color: Colors.white.withOpacity(0.08)),
+        ),
+      ],
+    );
+  }
+}
 
 class _GlassCreateCard extends StatelessWidget {
   final Color accent;
-  const _GlassCreateCard({required this.accent});
+  final VoidCallback? onTap;
+
+  const _GlassCreateCard({required this.accent, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(22),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          height: 110,
-          decoration: BoxDecoration(
-            color: accent.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: accent.withOpacity(0.3)),
-          ),
-          child: Row(
-            children: [
-              const SizedBox(width: 25),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.edit_calendar_rounded,
-                  color: Colors.white,
-                  size: 28,
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            child: Container(
+              height: 112,
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              decoration: BoxDecoration(
+                color: accent.withOpacity(0.14),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: accent.withOpacity(0.30)),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    accent.withOpacity(0.18),
+                    Colors.white.withOpacity(0.02),
+                  ],
                 ),
               ),
-              const SizedBox(width: 20),
-              const Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Text(
-                    "MODE LIBRE",
-                    style: TextStyle(
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.10),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white.withOpacity(0.10)),
+                    ),
+                    child: const Icon(
+                      Icons.edit_calendar_rounded,
                       color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 18,
-                      letterSpacing: 0.5,
+                      size: 26,
                     ),
                   ),
-                  SizedBox(height: 4),
-                  Text(
-                    "Crée ta propre séance\nde A à Z.",
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 13,
-                      height: 1.2,
+                  const SizedBox(width: 14),
+
+                  const Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "MODE LIBRE",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                            letterSpacing: 0.2,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                        SizedBox(height: 5),
+                        Text(
+                          "Crée ta séance rapidement.",
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                            height: 1.1,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // CTA
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withOpacity(0.10)),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          "CRÉER",
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.92),
+                            fontWeight: FontWeight.w900,
+                            fontSize: 11,
+                            letterSpacing: 0.6,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: accent,
+                          size: 18,
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -371,10 +527,9 @@ class _GlassCreateCard extends StatelessWidget {
 
 class _GlassFilterChip extends StatelessWidget {
   final String label;
-  final bool isSelected; // 👈 Cette variable causait l'erreur
+  final bool isSelected;
   final Color accent;
 
-  // ✅ CORRECTION : Ajout de "required this.isSelected" dans le constructeur
   const _GlassFilterChip({
     required this.label,
     required this.isSelected,
@@ -392,7 +547,6 @@ class _GlassFilterChip extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             decoration: BoxDecoration(
-              // Utilisation de isSelected pour changer la couleur
               color: isSelected
                   ? accent.withOpacity(0.8)
                   : Colors.white.withOpacity(0.05),
@@ -453,7 +607,6 @@ class _ProgramCard extends StatelessWidget {
               fit: BoxFit.cover,
               errorBuilder: (c, e, s) => Container(color: Colors.grey[900]),
             ),
-            // ✅ Overlay Gradient Apple Style
             DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -469,7 +622,6 @@ class _ProgramCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  // ✅ Badge en verre
                   ClipRRect(
                     borderRadius: BorderRadius.circular(4),
                     child: BackdropFilter(
@@ -535,7 +687,6 @@ class _ProgramCard extends StatelessWidget {
                 ],
               ),
             ),
-            // ✅ Bouton "+" en verre
             Positioned(
               right: 16,
               bottom: 16,

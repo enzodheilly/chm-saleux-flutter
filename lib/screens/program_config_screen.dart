@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:ui'; // 👈 IMPORTANT POUR L'EFFET VERRE (ImageFilter)
 
+const Color clubOrange = Color(0xFFF57809);
+const Color darkBg = Color(0xFF0B0B0F);
+
 class ProgramConfigScreen extends StatefulWidget {
   final String muscleGroup;
   final List<dynamic> variations;
@@ -18,9 +21,6 @@ class ProgramConfigScreen extends StatefulWidget {
 class _ProgramConfigScreenState extends State<ProgramConfigScreen> {
   String selectedGoal = "prise_de_masse";
   String selectedLevel = "intermediaire";
-
-  final Color clubOrange = const Color(0xFFF57809);
-  final Color darkBg = const Color(0xFF0B0B0F);
 
   String _getBackgroundImage() {
     final name = widget.muscleGroup.toLowerCase();
@@ -55,6 +55,7 @@ class _ProgramConfigScreenState extends State<ProgramConfigScreen> {
   @override
   Widget build(BuildContext context) {
     final matchingProgram = getMatchingProgram();
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       backgroundColor: darkBg,
@@ -64,88 +65,198 @@ class _ProgramConfigScreenState extends State<ProgramConfigScreen> {
           Positioned.fill(
             child: Image.network(_getBackgroundImage(), fit: BoxFit.cover),
           ),
-          // Voile noir
+
+          // Voile noir + gradient (plus clean en haut)
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Colors.black.withOpacity(0.4), darkBg],
-                  stops: const [0.0, 0.7],
+                  colors: [
+                    Colors.black.withOpacity(0.15),
+                    Colors.black.withOpacity(0.55),
+                    darkBg,
+                  ],
+                  stops: const [0.0, 0.35, 0.85],
                 ),
               ),
             ),
           ),
 
-          // 2. CONTENU SCROLLABLE
+          // 2. CONTENU
           SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Top bar
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                  child: IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(
-                      Icons.arrow_back_ios_new,
-                      color: Colors.white,
-                    ),
+                  padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(
+                          Icons.arrow_back_ios_new,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.10),
+                          ),
+                        ),
+                        child: Text(
+                          "PERSONNALISATION",
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.80),
+                            fontWeight: FontWeight.w900,
+                            fontSize: 11,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
+
                 Expanded(
                   child: ListView(
                     physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.fromLTRB(20, 6, 20, 140),
                     children: [
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 6),
+                      // ✅ TITRE style Progrès
                       Text(
                         widget.muscleGroup.toUpperCase(),
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 32,
+                          fontSize: 30,
                           fontWeight: FontWeight.w900,
-                          letterSpacing: 1.5,
                           fontStyle: FontStyle.italic,
+                          letterSpacing: -0.6,
                         ),
                       ),
+                      const SizedBox(height: 6),
                       Text(
-                        "Configure ta séance idéale",
+                        "Ajuste ton objectif et ta difficulté.",
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.7),
-                          fontSize: 16,
+                          color: Colors.white.withOpacity(0.62),
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                          height: 1.15,
                         ),
                       ),
 
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 22),
 
-                      _SectionHeader(
-                        title: "TON OBJECTIF",
+                      // ✅ Header section style Training/Progress (ligne + séparateur)
+                      const _PremiumSectionHeader(
+                        title: "Objectif",
                         icon: Icons.flag_rounded,
                       ),
-                      const SizedBox(height: 15),
-                      // ✅ NOUVEAU SÉLECTEUR VERRE
+                      const SizedBox(height: 14),
+
                       _GlassGoalSelector(
                         selected: selectedGoal,
                         onSelect: (val) => setState(() => selectedGoal = val),
                         accent: clubOrange,
                       ),
 
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 26),
 
-                      _SectionHeader(
-                        title: "DIFFICULTÉ",
+                      const _PremiumSectionHeader(
+                        title: "Difficulté",
                         icon: Icons.speed_rounded,
                       ),
-                      const SizedBox(height: 15),
-                      // ✅ NOUVEAU SÉLECTEUR VERRE
+                      const SizedBox(height: 14),
+
                       _GlassLevelSelector(
                         selected: selectedLevel,
                         onSelect: (val) => setState(() => selectedLevel = val),
                         accent: clubOrange,
                       ),
 
-                      const SizedBox(height: 120),
+                      const SizedBox(height: 20),
+
+                      // mini info “résumé”
+                      if (matchingProgram != null)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(18),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                            child: Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.06),
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.10),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 42,
+                                    height: 42,
+                                    decoration: BoxDecoration(
+                                      color: clubOrange.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(
+                                        color: clubOrange.withOpacity(0.25),
+                                      ),
+                                    ),
+                                    child: const Icon(
+                                      Icons.timer_outlined,
+                                      color: clubOrange,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          "Durée estimée",
+                                          style: TextStyle(
+                                            color: Colors.white.withOpacity(
+                                              0.55,
+                                            ),
+                                            fontWeight: FontWeight.w900,
+                                            fontSize: 10,
+                                            letterSpacing: 1.0,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          "${matchingProgram['estimatedDurationMin'] ?? 60} min",
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w900,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const Icon(
+                                    Icons.check_circle_rounded,
+                                    color: Colors.white54,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -153,29 +264,29 @@ class _ProgramConfigScreenState extends State<ProgramConfigScreen> {
             ),
           ),
 
-          // 3. BOUTON FLOTTANT EN BAS (Version Verre Orange)
+          // 3. BOUTON FLOTTANT EN BAS
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
-            // On utilise un ClipRRect et BackdropFilter ici aussi pour que le bas de l'écran soit flouté
             child: ClipRRect(
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                 child: Container(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
                   decoration: BoxDecoration(
-                    color: darkBg.withOpacity(0.6), // Fond semi-transparent
+                    color: darkBg.withOpacity(0.62),
                     border: Border(
-                      top: BorderSide(color: Colors.white.withOpacity(0.1)),
+                      top: BorderSide(color: Colors.white.withOpacity(0.08)),
                     ),
                   ),
                   child: matchingProgram != null
                       ? _AppleGlassButton(
                           onTap: () {
-                            print("GO -> ID: ${matchingProgram['id']}");
+                            // TODO: brancher navigation / lancer séance
+                            // print("GO -> ID: ${matchingProgram['id']}");
                           },
-                          isActive: true, // Toujours actif (orange)
+                          isActive: true,
                           accentColor: clubOrange,
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -195,8 +306,11 @@ class _ProgramConfigScreenState extends State<ProgramConfigScreen> {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.2),
+                                  color: Colors.black.withOpacity(0.18),
                                   borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.08),
+                                  ),
                                 ),
                                 child: Text(
                                   "${matchingProgram['estimatedDurationMin']} min",
@@ -212,7 +326,7 @@ class _ProgramConfigScreenState extends State<ProgramConfigScreen> {
                       : _AppleGlassButton(
                           onTap: null,
                           isActive: false,
-                          accentColor: Colors.red, // Inactif rouge
+                          accentColor: Colors.red,
                           child: const Center(
                             child: Text(
                               "Aucune séance disponible",
@@ -234,34 +348,42 @@ class _ProgramConfigScreenState extends State<ProgramConfigScreen> {
 }
 
 // ==========================================
-// WIDGETS DE STYLE (MISE À JOUR GLASS)
+// ✅ HEADER PREMIUM (même style que Training/Progress)
 // ==========================================
-
-class _SectionHeader extends StatelessWidget {
+class _PremiumSectionHeader extends StatelessWidget {
   final String title;
   final IconData icon;
-  const _SectionHeader({required this.title, required this.icon});
+
+  const _PremiumSectionHeader({required this.title, required this.icon});
+
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, color: const Color(0xFFF57809), size: 18),
+        Icon(icon, size: 16, color: clubOrange),
         const SizedBox(width: 8),
         Text(
-          title,
+          title.toUpperCase(),
           style: TextStyle(
-            color: Colors.white.withOpacity(0.6),
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.0,
+            color: Colors.white.withOpacity(0.75),
+            fontWeight: FontWeight.w900,
             fontSize: 12,
+            letterSpacing: 1.1,
           ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Container(height: 1, color: Colors.white.withOpacity(0.08)),
         ),
       ],
     );
   }
 }
 
-// 🔥 LE CŒUR DE L'EFFET APPLE GLASS 🔥
+// ==========================================
+// WIDGETS DE STYLE (INCHANGÉS)
+// ==========================================
+
 class _AppleGlassButton extends StatelessWidget {
   final Widget child;
   final VoidCallback? onTap;
@@ -279,7 +401,6 @@ class _AppleGlassButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Détermine la couleur de teinte et de bordure selon l'état
     final tintColor = isActive
         ? accentColor.withOpacity(0.35)
         : Colors.white.withOpacity(0.08);
@@ -287,11 +408,9 @@ class _AppleGlassButton extends StatelessWidget {
         ? accentColor.withOpacity(0.6)
         : Colors.white.withOpacity(0.15);
 
-    // ClipRRect est nécessaire pour que le flou ne dépasse pas des bords arrondis
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: BackdropFilter(
-        // C'est ça qui fait le flou derrière le bouton !
         filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
         child: InkWell(
           onTap: onTap,
@@ -300,7 +419,7 @@ class _AppleGlassButton extends StatelessWidget {
             duration: const Duration(milliseconds: 200),
             padding: padding,
             decoration: BoxDecoration(
-              color: tintColor, // Couleur semi-transparente
+              color: tintColor,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: borderColor, width: 1.5),
             ),
@@ -312,7 +431,6 @@ class _AppleGlassButton extends StatelessWidget {
   }
 }
 
-// Sélecteur d'objectifs utilisant le bouton verre
 class _GlassGoalSelector extends StatelessWidget {
   final String selected;
   final Function(String) onSelect;
@@ -322,6 +440,7 @@ class _GlassGoalSelector extends StatelessWidget {
     required this.onSelect,
     required this.accent,
   });
+
   @override
   Widget build(BuildContext context) {
     final options = [
@@ -332,17 +451,17 @@ class _GlassGoalSelector extends StatelessWidget {
       },
       {
         'key': 'perte_de_poids',
-        'label': 'Sèche',
+        'label': 'Perte de poids',
         'icon': Icons.local_fire_department,
       },
       {'key': 'renfo', 'label': 'Force', 'icon': Icons.flash_on},
     ];
+
     return Column(
       children: options.map((opt) {
         final isSelected = selected == opt['key'];
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
-          // Utilisation du widget verre
           child: _AppleGlassButton(
             onTap: () => onSelect(opt['key'] as String),
             isActive: isSelected,
@@ -371,7 +490,6 @@ class _GlassGoalSelector extends StatelessWidget {
   }
 }
 
-// Sélecteur de niveaux utilisant le bouton verre
 class _GlassLevelSelector extends StatelessWidget {
   final String selected;
   final Function(String) onSelect;
@@ -381,16 +499,17 @@ class _GlassLevelSelector extends StatelessWidget {
     required this.onSelect,
     required this.accent,
   });
+
   @override
   Widget build(BuildContext context) {
     final levels = ['debutant', 'intermediaire', 'avance'];
+
     return Row(
       children: levels.map((lvl) {
         final isSelected = selected == lvl;
         return Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 5),
-            // Utilisation du widget verre
             child: _AppleGlassButton(
               onTap: () => onSelect(lvl),
               isActive: isSelected,
@@ -399,7 +518,7 @@ class _GlassLevelSelector extends StatelessWidget {
               child: Center(
                 child: Text(
                   lvl == 'debutant'
-                      ? 'Novice'
+                      ? 'debutant'
                       : (lvl == 'intermediaire' ? 'Inter.' : 'Pro'),
                   style: TextStyle(
                     color: isSelected ? Colors.white : Colors.white70,

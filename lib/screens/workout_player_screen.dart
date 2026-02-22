@@ -6,6 +6,46 @@ import '../services/routine_service.dart';
 import '../services/workout_manager.dart';
 
 const Color clubOrange = Color(0xFFF57809);
+const Color darkBg = Color(0xFF0B0B0F);
+
+// =====================
+// TYPO (cohérence Progrès)
+// =====================
+const TextStyle kScreenTitle = TextStyle(
+  color: Colors.white,
+  fontSize: 16,
+  fontWeight: FontWeight.w900,
+  fontStyle: FontStyle.italic,
+  letterSpacing: 0.4,
+);
+
+const TextStyle kSectionTitle = TextStyle(
+  color: Colors.white,
+  fontSize: 18,
+  fontWeight: FontWeight.w900,
+  fontStyle: FontStyle.italic,
+  letterSpacing: -0.2,
+);
+
+const TextStyle kLabelSmall = TextStyle(
+  color: Colors.white54,
+  fontSize: 10,
+  fontWeight: FontWeight.w900,
+  letterSpacing: 1.1,
+);
+
+const TextStyle kMeta = TextStyle(
+  color: Colors.white70,
+  fontSize: 12,
+  fontWeight: FontWeight.w700,
+);
+
+const TextStyle kButtonText = TextStyle(
+  color: Colors.white,
+  fontWeight: FontWeight.w900,
+  fontSize: 12,
+  letterSpacing: 0.8,
+);
 
 class WorkoutPlayerScreen extends StatefulWidget {
   final int routineId;
@@ -51,11 +91,10 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 🔥 ON RÉCUPÈRE LE MANAGER
     final manager = Provider.of<WorkoutManager>(context);
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: darkBg,
       body: manager.dynamicExercises.isEmpty
           ? const Center(child: CircularProgressIndicator(color: clubOrange))
           : CustomScrollView(
@@ -65,7 +104,7 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
-                    vertical: 25,
+                    vertical: 22,
                   ),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
@@ -83,12 +122,11 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
 
   Widget _buildSliverAppBar(WorkoutManager manager) {
     return SliverAppBar(
-      expandedHeight: 220,
+      expandedHeight: 240,
       pinned: true,
-      backgroundColor: Colors.black,
+      backgroundColor: darkBg,
       leading: IconButton(
         icon: const Icon(Icons.close, color: Colors.white),
-        // ✅ IMPORTANT : On ferme juste la page, la séance continue en fond
         onPressed: () => Navigator.pop(context),
       ),
       actions: [
@@ -110,12 +148,29 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Colors.black54, Colors.black],
+                  colors: [Colors.black54, darkBg],
                 ),
               ),
             ),
+
+            // ✅ TITRE / SOUS-TITRE (lisible, cohérent)
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 56, 16, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(widget.routineName.toUpperCase(), style: kScreenTitle),
+                    const SizedBox(height: 6),
+                    const Text("SUIVI DE SÉANCE", style: kLabelSmall),
+                  ],
+                ),
+              ),
+            ),
+
+            // ✅ STATS en bas
             Positioned(
-              bottom: 25,
+              bottom: 18,
               left: 0,
               right: 0,
               child: Row(
@@ -124,7 +179,7 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
                   _StatItem(
                     label: "CHRONO",
                     value: _formatTime(manager.seconds),
-                    color: clubOrange,
+                    valueColor: clubOrange,
                   ),
                   _StatItem(
                     label: "VOLUME",
@@ -145,23 +200,20 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
 
   Widget _buildExerciseSection(WorkoutManager manager, int exIndex) {
     final ex = manager.dynamicExercises[exIndex];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           ex['exercise']['name'].toString().toUpperCase(),
-          style: const TextStyle(
-            color: clubOrange,
-            fontWeight: FontWeight.w900,
-            fontSize: 17,
-          ),
+          style: kSectionTitle,
         ),
-        const SizedBox(height: 15),
+        const SizedBox(height: 12),
         _buildLogHeader(),
         Container(
           decoration: BoxDecoration(
             border: Border.all(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withOpacity(0.12),
               width: 1.2,
             ),
             borderRadius: BorderRadius.circular(12),
@@ -178,14 +230,15 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 15),
+        const SizedBox(height: 12),
         _buildGlassActionBtn(
           "+ Ajouter une série",
-          clubOrange.withOpacity(0.15),
-          textColor: clubOrange,
+          clubOrange.withOpacity(0.14),
+          textColor: Colors.white,
+          icon: Icons.add_rounded,
           onTap: () => manager.addNewSet(exIndex),
         ),
-        const SizedBox(height: 40),
+        const SizedBox(height: 34),
       ],
     );
   }
@@ -195,50 +248,10 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
       padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          Expanded(
-            flex: 1,
-            child: Text(
-              "SÉRIE",
-              style: TextStyle(
-                color: Colors.white38,
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              "PRÉCÉDENT",
-              style: TextStyle(
-                color: Colors.white38,
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              "KG",
-              style: TextStyle(
-                color: Colors.white38,
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              "REPS",
-              style: TextStyle(
-                color: Colors.white38,
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
+          Expanded(flex: 1, child: Text("SÉRIE", style: kLabelSmall)),
+          Expanded(flex: 2, child: Text("PRÉCÉDENT", style: kLabelSmall)),
+          Expanded(flex: 2, child: Text("KG", style: kLabelSmall)),
+          Expanded(flex: 2, child: Text("REPS", style: kLabelSmall)),
           SizedBox(
             width: 35,
             child: Center(
@@ -278,12 +291,12 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
         decoration: BoxDecoration(
           color: isDone
-              ? clubOrange.withOpacity(0.2)
+              ? clubOrange.withOpacity(0.18)
               : (setIndex % 2 == 0
                     ? Colors.white.withOpacity(0.04)
                     : Colors.transparent),
           border: Border(
-            bottom: BorderSide(color: Colors.white.withOpacity(0.1)),
+            bottom: BorderSide(color: Colors.white.withOpacity(0.08)),
           ),
         ),
         child: Row(
@@ -304,13 +317,7 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
               color: Colors.white.withOpacity(0.05),
               margin: const EdgeInsets.only(right: 8),
             ),
-            const Expanded(
-              flex: 2,
-              child: Text(
-                "—",
-                style: TextStyle(color: Colors.white24, fontSize: 12),
-              ),
-            ),
+            const Expanded(flex: 2, child: Text("—", style: kMeta)),
             StableInput(
               initialValue: manager.workoutData["${prefix}_kg"] ?? "",
               hint: "10",
@@ -350,15 +357,16 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
             Expanded(
               child: _buildGlassActionBtn(
                 "Paramètres",
-                Colors.white.withOpacity(0.1),
+                Colors.white.withOpacity(0.08),
                 icon: Icons.settings,
+                onTap: () {},
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: _buildGlassActionBtn(
                 "Abandonner",
-                Colors.redAccent.withOpacity(0.2),
+                Colors.redAccent.withOpacity(0.18),
                 icon: Icons.delete_outline,
                 onTap: () {
                   manager.stopWorkout();
@@ -380,9 +388,9 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
     VoidCallback? onTap,
   }) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
         child: InkWell(
           onTap: onTap,
           child: Container(
@@ -390,23 +398,19 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
             padding: const EdgeInsets.symmetric(vertical: 14),
             decoration: BoxDecoration(
               color: color,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.2)),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white.withOpacity(0.14)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (icon != null)
-                  Icon(icon, color: textColor.withOpacity(0.8), size: 16),
+                  Icon(icon, color: textColor.withOpacity(0.9), size: 16),
                 if (icon != null) const SizedBox(width: 8),
                 Text(
-                  label,
+                  label.toUpperCase(),
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: textColor,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 13,
-                  ),
+                  style: kButtonText.copyWith(color: textColor),
                 ),
               ],
             ),
@@ -416,14 +420,9 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
     );
   }
 
-  // ✅ MODIFICATION ICI : APPEL ASYNCHRONE DE FINISHWORKOUT
   Widget _buildTopFinishBtn(WorkoutManager manager) {
     return InkWell(
       onTap: () async {
-        print(
-          "👆 CLIC : Tentative de sauvegarde de la séance via WorkoutManager...",
-        );
-        // On attend la fin de l'exécution de la sauvegarde
         await manager.finishWorkout(context);
       },
       child: Container(
@@ -432,17 +431,10 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
           color: clubOrange,
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
-            BoxShadow(color: clubOrange.withOpacity(0.4), blurRadius: 12),
+            BoxShadow(color: clubOrange.withOpacity(0.35), blurRadius: 12),
           ],
         ),
-        child: const Text(
-          "TERMINER",
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w900,
-            fontSize: 12,
-          ),
-        ),
+        child: const Text("TERMINER", style: kButtonText),
       ),
     );
   }
@@ -505,12 +497,12 @@ class _StableInputState extends State<StableInput> {
         decoration: BoxDecoration(
           color: widget.isLocked
               ? Colors.black45
-              : Colors.white.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(6),
+              : Colors.white.withOpacity(0.10),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: widget.isLocked
-                ? clubOrange.withOpacity(0.5)
-                : Colors.white.withOpacity(0.1),
+                ? clubOrange.withOpacity(0.45)
+                : Colors.white.withOpacity(0.10),
           ),
         ),
         child: TextField(
@@ -539,12 +531,14 @@ class _StableInputState extends State<StableInput> {
 
 class _StatItem extends StatelessWidget {
   final String label, value;
-  final Color color;
+  final Color valueColor;
+
   const _StatItem({
     required this.label,
     required this.value,
-    this.color = Colors.white,
+    this.valueColor = Colors.white,
   });
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -552,21 +546,14 @@ class _StatItem extends StatelessWidget {
         Text(
           value,
           style: TextStyle(
-            color: color,
+            color: valueColor,
             fontSize: 20,
             fontWeight: FontWeight.w900,
           ),
         ),
         const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white24,
-            fontSize: 9,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.5,
-          ),
-        ),
+        const Text("", style: TextStyle(fontSize: 0)), // garde l'espace stable
+        Text(label, style: kLabelSmall),
       ],
     );
   }

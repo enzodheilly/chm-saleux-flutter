@@ -3,8 +3,13 @@ import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 
 class RoutineService {
-  // ⚠️ Assure-toi que cette URL est bonne (10.0.2.2 pour Émulateur Android)
-  final String baseUrl = "http://10.0.2.2:8000/api";
+  // ✅ Android Emulator -> 10.0.2.2
+  static const String baseUrl = "http://10.0.2.2:8000/api";
+
+  Map<String, String> _headers(String token) => {
+    'Authorization': 'Bearer $token',
+    'Content-Type': 'application/json',
+  };
 
   // --- 1. SÉANCE DU JOUR ---
   Future<Map<String, dynamic>?> getTodayRoutine() async {
@@ -14,14 +19,12 @@ class RoutineService {
 
       final response = await http.get(
         Uri.parse('$baseUrl/my-routine/today'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
+        headers: _headers(token),
       );
 
       if (response.statusCode == 200) {
-        return json.decode(response.body);
+        final decoded = json.decode(response.body);
+        if (decoded is Map<String, dynamic>) return decoded;
       }
     } catch (e) {
       print("Erreur RoutineService (Today): $e");
@@ -37,14 +40,12 @@ class RoutineService {
 
       final response = await http.get(
         Uri.parse('$baseUrl/programs'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
+        headers: _headers(token),
       );
 
       if (response.statusCode == 200) {
-        return json.decode(response.body);
+        final decoded = json.decode(response.body);
+        if (decoded is List) return decoded;
       }
     } catch (e) {
       print("Erreur RoutineService (AllPrograms): $e");
@@ -52,7 +53,7 @@ class RoutineService {
     return [];
   }
 
-  // ✅ 3. DÉTAILS D'UNE ROUTINE (Pour le Player)
+  // --- 3. DÉTAILS D'UNE ROUTINE (Player) ---
   Future<Map<String, dynamic>?> getRoutineDetails(int routineId) async {
     try {
       final token = await AuthService().getToken();
@@ -60,14 +61,12 @@ class RoutineService {
 
       final response = await http.get(
         Uri.parse('$baseUrl/programs/$routineId'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
+        headers: _headers(token),
       );
 
       if (response.statusCode == 200) {
-        return json.decode(response.body);
+        final decoded = json.decode(response.body);
+        if (decoded is Map<String, dynamic>) return decoded;
       }
     } catch (e) {
       print("Erreur RoutineService (Details): $e");
@@ -81,15 +80,12 @@ class RoutineService {
     if (token == null) return false;
 
     final url = Uri.parse('$baseUrl/schedule/add');
-    String dateString = date.toIso8601String().split('T')[0];
+    final dateString = date.toIso8601String().split('T')[0];
 
     try {
       final response = await http.post(
         url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+        headers: _headers(token),
         body: jsonEncode({'routine_id': routineId, 'date': dateString}),
       );
 
@@ -100,7 +96,7 @@ class RoutineService {
     }
   }
 
-  // --- 5. RÉCUPÉRER LE PLANNING DE LA SEMAINE ---
+  // --- 5. PLANNING DE LA SEMAINE ---
   Future<List<dynamic>> getWeeklySchedule() async {
     try {
       final token = await AuthService().getToken();
@@ -108,14 +104,12 @@ class RoutineService {
 
       final response = await http.get(
         Uri.parse('$baseUrl/schedule/my-week'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
+        headers: _headers(token),
       );
 
       if (response.statusCode == 200) {
-        return json.decode(response.body);
+        final decoded = json.decode(response.body);
+        if (decoded is List) return decoded;
       }
     } catch (e) {
       print("Erreur RoutineService (Weekly): $e");
@@ -123,16 +117,13 @@ class RoutineService {
     return [];
   }
 
-  // ✅ 6. SAUVEGARDER UNE SÉANCE TERMINÉE (VERSION DEBUG)
-  // J'ai blindé cette fonction de logs pour voir où ça coince
+  // --- 6. SAUVEGARDER UNE SÉANCE TERMINÉE (DEBUG) ---
   Future<bool> saveWorkoutSession(Map<String, dynamic> sessionData) async {
     print("\n🔵 --- DÉBUT DEBUG SAUVEGARDE ---");
 
-    // 1. Vérification de l'URL
     final url = Uri.parse('$baseUrl/workouts/complete');
     print("📍 URL Ciblée : $url");
 
-    // 2. Vérification du Token
     final token = await AuthService().getToken();
     print("🔑 Token récupéré : ${token != null ? 'OUI (ok)' : 'NON (NULL)'}");
 
@@ -142,18 +133,14 @@ class RoutineService {
       return false;
     }
 
-    // 3. Vérification des données JSON
-    final String bodyJson = jsonEncode(sessionData);
+    final bodyJson = jsonEncode(sessionData);
     print("📦 Données envoyées (JSON) : $bodyJson");
 
     try {
       print("🚀 Envoi de la requête en cours...");
       final response = await http.post(
         url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+        headers: _headers(token),
         body: bodyJson,
       );
 
@@ -172,11 +159,53 @@ class RoutineService {
       }
     } catch (e) {
       print("❌ CRASH RÉSEAU/CODE : $e");
-      print(
-        "👉 Vérifie : Ton serveur tourne ? L'IP est bonne ? Internet est activé ?",
-      );
+      print("👉 Vérifie : serveur ok ? IP ok ? internet ? ");
       print("🔵 --- FIN DEBUG SAUVEGARDE ---\n");
       return false;
     }
+  }
+
+  // --- 7. PROGRÈS : STATS KPI ---
+  Future<Map<String, dynamic>?> getProgressStats({int rangeDays = 30}) async {
+    try {
+      final token = await AuthService().getToken();
+      if (token == null) return null;
+
+      final url = Uri.parse('$baseUrl/workouts/stats?range=$rangeDays');
+      final response = await http.get(url, headers: _headers(token));
+
+      print("📍 GET ProgressStats -> $url");
+      print("📡 Status: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded is Map<String, dynamic>) return decoded;
+      }
+    } catch (e) {
+      print("Erreur RoutineService (ProgressStats): $e");
+    }
+    return null;
+  }
+
+  // --- 8. PROGRÈS : LISTE SÉANCES (HISTORIQUE) ---
+  Future<List<dynamic>> getWorkoutSessions({int rangeDays = 30}) async {
+    try {
+      final token = await AuthService().getToken();
+      if (token == null) return [];
+
+      final url = Uri.parse('$baseUrl/workouts/sessions?range=$rangeDays');
+      final response = await http.get(url, headers: _headers(token));
+
+      print("📍 GET WorkoutSessions -> $url");
+      print("📡 Status: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded is List) return decoded;
+      }
+    } catch (e) {
+      print("Erreur RoutineService (WorkoutSessions): $e");
+    }
+    return [];
   }
 }

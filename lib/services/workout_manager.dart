@@ -73,7 +73,9 @@ class WorkoutManager extends ChangeNotifier {
       "routine_id": routineId,
       "duration_seconds": _seconds,
       "total_volume": calculateTotalVolume(),
+      "total_sets": totalCompletedSets,
       "performed_at": DateTime.now().toIso8601String(),
+      "routine_name": routineName,
       "exercises": exercisesPayload,
     };
 
