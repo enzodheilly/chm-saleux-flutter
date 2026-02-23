@@ -2,15 +2,15 @@ import 'dart:convert';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-
-// ✅ AJOUT DES IMPORTS
 import 'package:provider/provider.dart';
+
 import '../services/workout_manager.dart';
 import '../widgets/active_workout_bar.dart';
 import 'progress_screen.dart';
 
 import '../services/auth_service.dart';
 import '../services/routine_service.dart';
+import '../services/news_service.dart';
 import 'training_screen.dart';
 import 'workout_player_screen.dart';
 
@@ -29,33 +29,31 @@ class _HomeScreenState extends State<HomeScreen> {
   // ✅ NAV
   int _selectedIndex = 0;
 
-  // ✅ JOURS
-  int _selectedDayIndex = DateTime.now().weekday - 1; // 0=Lundi
-  final List<String> _days = ["LUN", "MAR", "MER", "JEU", "VEN", "SAM", "DIM"];
-
   // ✅ PROFIL
   String currentUserName = "ATHLÈTE";
   String? profileImageUrl;
 
   // ✅ DATA
-  List<dynamic> weeklySchedule = [];
   List<dynamic> allPrograms = [];
   List<dynamic> lastSessions = [];
+  List<dynamic> siteNews = [];
   Map<String, dynamic>? profile;
 
   bool isLoading = true;
+  bool isNewsLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _fetchProfileAndData();
+    _fetchCoreData();
+    _fetchNews(); // ✅ non bloquant
   }
 
-  Future<void> _fetchProfileAndData() async {
+  /// ✅ Charge les données essentielles de la Home (rapide)
+  Future<void> _fetchCoreData() async {
     try {
       final results = await Future.wait([
         AuthService().getUserProfile(),
-        RoutineService().getWeeklySchedule(),
         RoutineService().getAllPrograms(),
         RoutineService().getWorkoutSessions(rangeDays: 30),
       ]);
@@ -63,9 +61,8 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
 
       final prof = results[0] as Map<String, dynamic>?;
-      final schedule = results[1] as List<dynamic>;
-      final programs = results[2] as List<dynamic>;
-      final sessions = results[3] as List<dynamic>;
+      final programs = results[1] as List<dynamic>;
+      final sessions = results[2] as List<dynamic>;
 
       setState(() {
         profile = prof;
@@ -75,62 +72,67 @@ class _HomeScreenState extends State<HomeScreen> {
           profileImageUrl = prof['profileImageUrl'];
         }
 
-        weeklySchedule = schedule;
         allPrograms = programs;
         lastSessions = sessions;
         isLoading = false;
       });
     } catch (e) {
-      debugPrint("Erreur chargement: $e");
+      debugPrint("Erreur chargement principal: $e");
       if (!mounted) return;
       setState(() => isLoading = false);
     }
   }
 
-  Map<String, dynamic>? _getRoutineForSelectedDay() {
-    DateTime now = DateTime.now();
-    int diff = _selectedDayIndex - (now.weekday - 1);
-    DateTime targetDate = now.add(Duration(days: diff));
-    String targetString = targetDate.toIso8601String().split('T')[0];
-
+  /// ✅ Charge les news séparément pour ne pas bloquer l’accueil
+  Future<void> _fetchNews() async {
     try {
-      final scheduleEntry = weeklySchedule.firstWhere((entry) {
-        final dateValue = entry['scheduledDate'] ?? entry['scheduled_date'];
-        return dateValue != null &&
-            dateValue.toString().startsWith(targetString);
-      }, orElse: () => null);
-
-      if (scheduleEntry != null) {
-        return scheduleEntry['routineTemplate'] ??
-            scheduleEntry['routine_template'];
-      }
+      final news = await NewsService().getSiteNews();
+      if (!mounted) return;
+      setState(() {
+        siteNews = news;
+        isNewsLoading = false;
+      });
     } catch (e) {
-      debugPrint("Erreur helper date: $e");
+      debugPrint("Erreur chargement news: $e");
+      if (!mounted) return;
+      setState(() => isNewsLoading = false);
     }
+  }
+
+  /// ✅ Programme recommandé simple (1er programme dispo)
+  Map<String, dynamic>? _getRecommendedProgram() {
+    if (allPrograms.isEmpty) return null;
+    final first = allPrograms.first;
+    if (first is Map<String, dynamic>) return first;
     return null;
   }
 
-  bool get _isGymClosedSelectedDay =>
-      _selectedDayIndex == 5 || _selectedDayIndex == 6;
-
   String _getImageForGroup(String groupName) {
     final name = groupName.toLowerCase().trim();
-    if (name.contains("pec") || name.contains("chest"))
+    if (name.contains("pec") || name.contains("chest")) {
       return "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80";
-    if (name.contains("dos") || name.contains("back"))
+    }
+    if (name.contains("dos") || name.contains("back")) {
       return "https://images.unsplash.com/photo-1603287681836-e54f0e4475ac?w=800&q=80";
-    if (name.contains("jambe") || name.contains("leg"))
+    }
+    if (name.contains("jambe") || name.contains("leg")) {
       return "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=800&q=80";
-    if (name.contains("bras") || name.contains("arm"))
+    }
+    if (name.contains("bras") || name.contains("arm")) {
       return "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=800&q=80";
-    if (name.contains("epaule") || name.contains("shoulder"))
+    }
+    if (name.contains("epaule") || name.contains("shoulder")) {
       return "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=800&q=80";
-    if (name.contains("abdo") || name.contains("abs"))
+    }
+    if (name.contains("abdo") || name.contains("abs")) {
       return "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&q=80";
-    if (name.contains("cardio") || name.contains("run"))
+    }
+    if (name.contains("cardio") || name.contains("run")) {
       return "https://images.unsplash.com/photo-1538805060504-6335d7aa1b7e?w=800&q=80";
-    if (name.contains("full") || name.contains("body"))
+    }
+    if (name.contains("full") || name.contains("body")) {
       return "https://images.unsplash.com/photo-1517963879466-e9b5ce3825bf?w=800&q=80";
+    }
     return "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80";
   }
 
@@ -204,7 +206,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: darkBackground,
-      // Retiré bottomNavigationBar d'ici pour la gérer dans la Stack
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -225,7 +226,6 @@ class _HomeScreenState extends State<HomeScreen> {
             Expanded(
               child: Stack(
                 children: [
-                  // ✅ INDEXEDSTACK : Garde toutes tes pages en mémoire, évite le rechargement et permet le clic instantané
                   IndexedStack(
                     index: _selectedIndex,
                     children: [
@@ -263,14 +263,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       return const Positioned(
                         left: 16,
                         right: 16,
-                        bottom:
-                            110, // Relevé pour ne pas superposer la Bottom Nav
+                        bottom: 110,
                         child: ActiveWorkoutBar(),
                       );
                     },
                   ),
 
-                  // ✅ BOTTOM NAV BAR FLOTTANTE (Contrôle absolu pour éviter les conflits de clic)
+                  // ✅ BOTTOM NAV BAR FLOTTANTE
                   Positioned(
                     left: 0,
                     right: 0,
@@ -348,165 +347,47 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return ListView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.only(
-        bottom: 140,
-      ), // Espace vital pour la bottom nav
+      padding: const EdgeInsets.only(bottom: 140),
       children: [
-        // 🔥 JOURS
-        SizedBox(
-          height: 90,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: 7,
-            itemBuilder: (context, index) {
-              bool isSelected = _selectedDayIndex == index;
-              bool isToday = (DateTime.now().weekday - 1) == index;
-              final bool isClosedDay = index == 5 || index == 6;
-
-              return GestureDetector(
-                onTap: () => setState(() => _selectedDayIndex = index),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 55,
-                  margin: const EdgeInsets.only(right: 12),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? clubOrange
-                        : Colors.white.withOpacity(0.04),
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(
-                      color: isSelected
-                          ? clubOrange
-                          : Colors.white.withOpacity(0.06),
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        _days[index],
-                        style: TextStyle(
-                          color: isSelected
-                              ? Colors.white
-                              : Colors.white.withOpacity(0.4),
-                          fontWeight: FontWeight.w900,
-                          fontSize: 12,
-                          letterSpacing: 0.6,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? Colors.black26
-                                  : Colors.transparent,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: Text(
-                                "${DateTime.now().add(Duration(days: index - (DateTime.now().weekday - 1))).day}",
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ),
-                          ),
-                          if (isClosedDay)
-                            Positioned(
-                              right: 0,
-                              bottom: 0,
-                              child: Container(
-                                padding: const EdgeInsets.all(3),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.35),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white.withOpacity(0.25),
-                                  ),
-                                ),
-                                child: const Icon(
-                                  Icons.lock_rounded,
-                                  size: 10,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      if (isToday && !isSelected)
-                        Container(
-                          margin: const EdgeInsets.only(top: 4),
-                          width: 4,
-                          height: 4,
-                          decoration: const BoxDecoration(
-                            color: clubOrange,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-
-        const SizedBox(height: 20),
-
-        // ✅ HERO
+        // ✅ HERO (simplifié : en cours / recommandé / explorer)
         Consumer<WorkoutManager>(
           builder: (context, manager, child) {
-            final activeRoutine = _getRoutineForSelectedDay();
-            bool isRunning =
-                activeRoutine != null &&
-                manager.isActive &&
-                manager.routineId == activeRoutine['id'];
-            final bool isClosed = _isGymClosedSelectedDay;
+            final recommended = _getRecommendedProgram();
+
+            final bool isRunning = manager.isActive;
+
+            final String heroTitle = isRunning
+                ? (manager.routineName ?? "SÉANCE EN COURS")
+                : (recommended != null
+                      ? (recommended['name'] ?? "SÉANCE RECOMMANDÉE").toString()
+                      : "AUCUNE SÉANCE DISPONIBLE");
+
+            final String heroMeta = isRunning
+                ? "Reprends ta séance là où tu t’es arrêté 💪"
+                : (recommended != null
+                      ? "${recommended['muscleGroup'] ?? 'Entraînement'} • ${recommended['estimatedDurationMin'] ?? 60} min"
+                      : "Découvre les entraînements disponibles dans l’onglet Training.");
+
+            final String buttonText = isRunning
+                ? "EN COURS"
+                : (recommended != null ? "DÉMARRER" : "EXPLORER");
+
+            final IconData buttonIcon = isRunning
+                ? Icons.timelapse_rounded
+                : (recommended != null
+                      ? Icons.play_arrow_rounded
+                      : Icons.fitness_center_rounded);
 
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: _HeroBanner(
                 name: currentUserName,
-                title: isClosed
-                    ? "SALLE FERMÉE"
-                    : (activeRoutine != null
-                          ? activeRoutine['name']
-                          : "RIEN DE PRÉVU"),
-                meta: isClosed
-                    ? "Le club est fermé le week-end.\nPlanifie plutôt pour la semaine 💪"
-                    : (activeRoutine != null
-                          ? "${activeRoutine['muscleGroup'] ?? 'Entraînement'} • ${activeRoutine['estimatedDurationMin'] ?? 60} min"
-                          : "Planifie ta séance pour ${_days[_selectedDayIndex]} !"),
+                title: heroTitle,
+                meta: heroMeta,
                 accent: clubOrange,
-                buttonText: isClosed
-                    ? "FERMÉ"
-                    : (isRunning
-                          ? "EN COURS"
-                          : (activeRoutine != null ? "DÉMARRER" : "PLANIFIER")),
-                buttonIcon: isClosed
-                    ? Icons.lock_rounded
-                    : (isRunning
-                          ? Icons.timelapse_rounded
-                          : (activeRoutine != null
-                                ? Icons.play_arrow_rounded
-                                : Icons.calendar_month_rounded)),
+                buttonText: buttonText,
+                buttonIcon: buttonIcon,
                 onStart: () {
-                  if (isClosed) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("La salle est fermée le week-end ❌"),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                    return;
-                  }
                   if (isRunning) {
                     Navigator.push(
                       context,
@@ -517,33 +398,25 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     );
-                  } else if (activeRoutine != null) {
+                    return;
+                  }
+
+                  if (recommended != null && recommended['id'] != null) {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (_) => WorkoutPlayerScreen(
-                          routineId: activeRoutine['id'],
-                          routineName: activeRoutine['name'],
+                          routineId: recommended['id'],
+                          routineName: (recommended['name'] ?? 'Séance')
+                              .toString(),
                         ),
                       ),
                     );
-                  } else {
-                    DateTime now = DateTime.now();
-                    int diff = _selectedDayIndex - (now.weekday - 1);
-                    DateTime targetDate = now.add(Duration(days: diff));
-
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => TrainingScreen(targetDate: targetDate),
-                      ),
-                    ).then((value) {
-                      if (value == true) {
-                        setState(() => isLoading = true);
-                        _fetchProfileAndData();
-                      }
-                    });
+                    return;
                   }
+
+                  // Fallback : onglet Training
+                  setState(() => _selectedIndex = 1);
                 },
               ),
             );
@@ -558,9 +431,7 @@ class _HomeScreenState extends State<HomeScreen> {
             title: "ENTRAÎNEMENTS POUR TOI",
             actionText: "Voir tout",
             actionColor: clubOrange,
-            onAction: () => setState(
-              () => _selectedIndex = 1,
-            ), // ✅ Navigue vers TrainingScreen
+            onAction: () => setState(() => _selectedIndex = 1),
           ),
         ),
         const SizedBox(height: 12),
@@ -634,31 +505,39 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildNewsTab() {
-    return ListView(
+    if (isNewsLoading) {
+      return const Center(child: CircularProgressIndicator(color: clubOrange));
+    }
+
+    if (siteNews.isEmpty) {
+      return const Center(
+        child: Text(
+          "Aucune actualité pour le moment.",
+          style: TextStyle(color: Colors.white70),
+        ),
+      );
+    }
+
+    return ListView.builder(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
-      children: const [
-        _NewsCard(
-          accent: clubOrange,
-          title: "Nouveau challenge du mois",
-          subtitle: "Objectif : 12 séances",
-          icon: Icons.local_fire_department_rounded,
-        ),
-        SizedBox(height: 12),
-        _NewsCard(
-          accent: clubOrange,
-          title: "Conseil coaching",
-          subtitle: "Récup : 7h de sommeil + 2L d’eau / jour",
-          icon: Icons.tips_and_updates_rounded,
-        ),
-        SizedBox(height: 12),
-        _NewsCard(
-          accent: clubOrange,
-          title: "Horaires du club",
-          subtitle: "Ouvert jusqu’à 23h cette semaine 💪",
-          icon: Icons.access_time_rounded,
-        ),
-      ],
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+      itemCount: siteNews.length,
+      itemBuilder: (context, index) {
+        final article = siteNews[index];
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _NewsCard(
+            accent: clubOrange,
+            title: article['title'] ?? "Titre indisponible",
+            subtitle:
+                article['subtitle'] ??
+                article['excerpt'] ??
+                "Cliquez pour lire...",
+            icon: Icons.article_rounded,
+          ),
+        );
+      },
     );
   }
 }
@@ -691,7 +570,6 @@ class _GlassBottomNav extends StatelessWidget {
                 width: 1.5,
               ),
             ),
-            // ✅ Remplacement de spaceAround par des Expanded() dans les enfants
             child: Row(
               children: [
                 _NavItem(
@@ -738,7 +616,6 @@ class _GlassBottomNav extends StatelessWidget {
   }
 }
 
-// ✅ Remplacement par Expanded et InkWell pour garantir une zone de clic parfaite
 class _NavItem extends StatelessWidget {
   final IconData icon;
   final String label;
