@@ -13,10 +13,15 @@ import '../services/routine_service.dart';
 import '../services/news_service.dart';
 import 'workout_player_screen.dart';
 import 'create_routine_screen.dart';
+import 'profile_screen.dart';
 
-// ✅ Const global
+// ✅ Palette light / moderne
 const Color clubOrange = Color(0xFFF57809);
-const Color darkBackground = Color(0xFF0B0B0F);
+const Color appBackground = Color(0xFFF6F7F9);
+const Color surfaceColor = Colors.white;
+const Color textPrimary = Color(0xFF15171C);
+const Color textSecondary = Color(0xFF757C87);
+const Color softBorder = Color(0xFFE9EDF2);
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -41,6 +46,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   bool isLoading = true;
   bool isNewsLoading = true;
+
+  // ✅ Favoris (local UI pour le moment)
+  final Set<int> _favoriteRoutineIds = <int>{};
 
   @override
   void initState() {
@@ -121,8 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return 'http://10.0.2.2:8000/$raw';
     }
 
-    // ✅ Cas le plus probable chez toi : juste "monimage.jpg"
-    // -> dossier public/uploads/
+    // ✅ Cas probable : juste "monimage.jpg" -> public/uploads/
     return 'http://10.0.2.2:8000/uploads/$raw';
   }
 
@@ -132,6 +139,36 @@ class _HomeScreenState extends State<HomeScreen> {
     final first = allPrograms.first;
     if (first is Map<String, dynamic>) return first;
     return null;
+  }
+
+  int? _toInt(dynamic value) {
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  void _toggleFavorite(int routineId) {
+    setState(() {
+      if (_favoriteRoutineIds.contains(routineId)) {
+        _favoriteRoutineIds.remove(routineId);
+      } else {
+        _favoriteRoutineIds.add(routineId);
+      }
+    });
+  }
+
+  List<Map<String, dynamic>> _buildFavoritePrograms() {
+    if (_favoriteRoutineIds.isEmpty) return [];
+
+    final result = <Map<String, dynamic>>[];
+    for (final p in allPrograms) {
+      if (p is! Map<String, dynamic>) continue;
+      final id = _toInt(p['id']);
+      if (id != null && _favoriteRoutineIds.contains(id)) {
+        result.add(p);
+      }
+    }
+    return result;
   }
 
   String _getImageForGroup(String groupName) {
@@ -232,7 +269,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: darkBackground,
+      backgroundColor: appBackground,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -244,7 +281,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 title: "chm saleux",
                 notifCount: 3,
                 userImage: profileImageUrl,
-                onProfileTap: () {},
+                onProfileTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                  );
+
+                  // ✅ Refresh de la home au retour (si photo / nom modifié)
+                  _fetchCoreData();
+                },
                 onNotifTap: () {},
               ),
             ),
@@ -257,15 +302,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     index: _selectedIndex,
                     children: [
                       _buildHomeContent(),
-                      const CreateRoutineScreen(), // ✅ OK
+                      const CreateRoutineScreen(),
                       const ProgressScreen(),
                       const Center(
                         child: Text(
                           "PAGE HALTÉROPHILIE",
                           style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontStyle: FontStyle.italic,
+                            color: textPrimary,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),
@@ -273,9 +317,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Text(
                           "PAGE ABONNEMENT",
                           style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontStyle: FontStyle.italic,
+                            color: textPrimary,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),
@@ -328,29 +371,26 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Container(
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   border: Border(
-                    bottom: BorderSide(
-                      color: Colors.white.withOpacity(0.08),
-                      width: 1,
-                    ),
+                    bottom: BorderSide(color: softBorder, width: 1),
                   ),
                 ),
                 child: const TabBar(
                   indicatorColor: clubOrange,
                   indicatorWeight: 3,
                   indicatorSize: TabBarIndicatorSize.tab,
-                  labelColor: clubOrange,
-                  unselectedLabelColor: Colors.white70,
+                  labelColor: textPrimary,
+                  unselectedLabelColor: textSecondary,
                   labelStyle: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 14,
-                    letterSpacing: 0.2,
-                  ),
-                  unselectedLabelStyle: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 14,
-                    letterSpacing: 0.2,
+                    letterSpacing: 0.1,
+                  ),
+                  unselectedLabelStyle: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    letterSpacing: 0.1,
                   ),
                   tabs: [
                     Tab(text: "Toi"),
@@ -371,91 +411,42 @@ class _HomeScreenState extends State<HomeScreen> {
     final forYou = _buildForYouPrograms();
     final attendance = _buildAttendancePoints(days: 14);
     final attendedCount = attendance.where((e) => e.value > 0).length;
+    final favoritePrograms = _buildFavoritePrograms();
 
     return ListView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.only(bottom: 140),
       children: [
-        // ✅ HERO (simplifié : en cours / recommandé / explorer)
-        Consumer<WorkoutManager>(
-          builder: (context, manager, child) {
-            final recommended = _getRecommendedProgram();
-
-            final bool isRunning = manager.isActive;
-
-            final String heroTitle = isRunning
-                ? (manager.routineName ?? "SÉANCE EN COURS")
-                : (recommended != null
-                      ? (recommended['name'] ?? "SÉANCE RECOMMANDÉE").toString()
-                      : "AUCUNE SÉANCE DISPONIBLE");
-
-            final String heroMeta = isRunning
-                ? "Reprends ta séance là où tu t’es arrêté 💪"
-                : (recommended != null
-                      ? "${recommended['muscleGroup'] ?? 'Entraînement'} • ${recommended['estimatedDurationMin'] ?? 60} min"
-                      : "Découvre les entraînements disponibles dans l’onglet Training.");
-
-            final String buttonText = isRunning
-                ? "EN COURS"
-                : (recommended != null ? "DÉMARRER" : "EXPLORER");
-
-            final IconData buttonIcon = isRunning
-                ? Icons.timelapse_rounded
-                : (recommended != null
-                      ? Icons.play_arrow_rounded
-                      : Icons.fitness_center_rounded);
-
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: _HeroBanner(
-                name: currentUserName,
-                title: heroTitle,
-                meta: heroMeta,
-                accent: clubOrange,
-                buttonText: buttonText,
-                buttonIcon: buttonIcon,
-                onStart: () {
-                  if (isRunning) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => WorkoutPlayerScreen(
-                          routineId: manager.routineId!,
-                          routineName: manager.routineName!,
-                        ),
-                      ),
-                    );
-                    return;
-                  }
-
-                  if (recommended != null && recommended['id'] != null) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => WorkoutPlayerScreen(
-                          routineId: recommended['id'],
-                          routineName: (recommended['name'] ?? 'Séance')
-                              .toString(),
-                        ),
-                      ),
-                    );
-                    return;
-                  }
-
-                  // Fallback : onglet Training
-                  setState(() => _selectedIndex = 1);
-                },
-              ),
-            );
-          },
+        // ✅ NOUVEAU BLOC BONJOUR (sans la partie entraînement)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: _WelcomeCard(
+            name: currentUserName,
+            favoritesCount: _favoriteRoutineIds.length,
+            attendedCount: attendedCount,
+          ),
         ),
 
-        const SizedBox(height: 26),
+        const SizedBox(height: 18),
+
+        // ✅ CASE MES FAVORIS
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: _FavoritesSummaryCard(
+            count: _favoriteRoutineIds.length,
+            favoriteNames: favoritePrograms
+                .take(3)
+                .map((e) => (e['name'] ?? 'Séance').toString())
+                .toList(),
+          ),
+        ),
+
+        const SizedBox(height: 24),
 
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: _SectionTitle(
-            title: "ENTRAÎNEMENTS POUR TOI",
+            title: "Entraînements pour toi",
             actionText: "Voir tout",
             actionColor: clubOrange,
             onAction: () => setState(() => _selectedIndex = 1),
@@ -464,7 +455,7 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 12),
 
         SizedBox(
-          height: 190,
+          height: 230,
           child: isLoading
               ? const Center(
                   child: CircularProgressIndicator(color: clubOrange),
@@ -473,7 +464,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ? const Center(
                         child: Text(
                           "Aucun programme disponible",
-                          style: TextStyle(color: Colors.white70),
+                          style: TextStyle(color: textSecondary),
                         ),
                       )
                     : ListView.builder(
@@ -483,17 +474,21 @@ class _HomeScreenState extends State<HomeScreen> {
                         itemCount: forYou.length,
                         itemBuilder: (context, i) {
                           final item = forYou[i];
+                          final routineId = item["routineId"] as int;
+
                           return _WorkoutCard(
-                            title: item["title"].toString().toUpperCase(),
+                            title: item["title"].toString(),
                             subtitle: item["subtitle"].toString(),
                             imgUrl: item["imgUrl"].toString(),
                             accent: clubOrange,
+                            isFavorite: _favoriteRoutineIds.contains(routineId),
+                            onFavoriteTap: () => _toggleFavorite(routineId),
                             onTap: () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) => WorkoutPlayerScreen(
-                                    routineId: item["routineId"] as int,
+                                    routineId: routineId,
                                     routineName: item["routineName"].toString(),
                                   ),
                                 ),
@@ -504,25 +499,26 @@ class _HomeScreenState extends State<HomeScreen> {
                       )),
         ),
 
-        const SizedBox(height: 26),
+        const SizedBox(height: 24),
 
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: _SectionTitle(
-            title: "ASSIDUITÉ",
-            actionText: "30 jours",
-            actionColor: Colors.white.withOpacity(0.4),
+            title: "Assiduité",
+            actionText: "14 jours",
+            actionColor: textSecondary,
             onAction: () {},
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
+
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: _AttendanceCard(
             accent: clubOrange,
             points: attendance,
             summaryText:
-                "$attendedCount jour(s) de présence sur les ${attendance.length} derniers jours",
+                "$attendedCount jour(s) d'entraînement sur ${attendance.length} jours",
           ),
         ),
 
@@ -540,7 +536,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return const Center(
         child: Text(
           "Aucune actualité pour le moment.",
-          style: TextStyle(color: Colors.white70),
+          style: TextStyle(color: textSecondary),
         ),
       );
     }
@@ -580,7 +576,7 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 /// =======================
-/// NOUVELLE BOTTOM NAV BAR
+/// BOTTOM NAV BAR (theme clair)
 /// =======================
 class _GlassBottomNav extends StatelessWidget {
   final int currentIndex;
@@ -593,19 +589,23 @@ class _GlassBottomNav extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(18),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Container(
-            height: 82,
-            padding: const EdgeInsets.symmetric(horizontal: 4),
+            height: 78,
+            padding: const EdgeInsets.symmetric(horizontal: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.08),
-                width: 1.5,
-              ),
+              color: Colors.white.withOpacity(0.92),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: softBorder),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
             child: Row(
               children: [
@@ -671,22 +671,20 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isSelected = index == currentIndex;
-    final Color activeColor = isSelected
-        ? clubOrange
-        : Colors.white.withOpacity(0.4);
+    final Color activeColor = isSelected ? clubOrange : textSecondary;
 
     return Expanded(
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () => onTap(index),
-          borderRadius: BorderRadius.circular(16),
-          splashColor: clubOrange.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          splashColor: clubOrange.withOpacity(0.10),
           highlightColor: Colors.transparent,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 24, color: activeColor),
+              Icon(icon, size: 22, color: activeColor),
               const SizedBox(height: 4),
               Text(
                 label,
@@ -695,16 +693,15 @@ class _NavItem extends StatelessWidget {
                 style: TextStyle(
                   color: activeColor,
                   fontSize: 10,
-                  fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
-                  letterSpacing: 0.2,
+                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 4),
               AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeOutExpo,
-                width: isSelected ? 6 : 0,
-                height: 4,
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOut,
+                width: isSelected ? 16 : 0,
+                height: 3,
                 decoration: BoxDecoration(
                   color: clubOrange,
                   borderRadius: BorderRadius.circular(4),
@@ -719,73 +716,8 @@ class _NavItem extends StatelessWidget {
 }
 
 /// =======================
-/// COMPONENTS RESTANTS
+/// TOP BAR
 /// =======================
-
-class _GlassButton extends StatelessWidget {
-  final VoidCallback onTap;
-  final Widget child;
-  final Color accent;
-
-  const _GlassButton({
-    required this.onTap,
-    required this.child,
-    required this.accent,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.10),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white.withOpacity(0.16)),
-            ),
-            child: child,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GlassContainer extends StatelessWidget {
-  final Widget child;
-  final double? width;
-  final double? height;
-
-  const _GlassContainer({required this.child, this.width, this.height});
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          width: width,
-          height: height,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.14)),
-          ),
-          child: child,
-        ),
-      ),
-    );
-  }
-}
-
 class _TopBar extends StatelessWidget {
   final String title;
   final int notifCount;
@@ -814,18 +746,22 @@ class _TopBar extends StatelessWidget {
         Text(
           title.toUpperCase(),
           style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.3,
-            fontSize: 14,
-            fontStyle: FontStyle.italic,
+            color: textPrimary,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.8,
+            fontSize: 13,
           ),
         ),
         const Spacer(),
         Badge(
           isLabelVisible: notifCount > 0,
+          backgroundColor: clubOrange,
+          textColor: Colors.white,
           label: Text("$notifCount"),
-          child: _CircleIcon(icon: Icons.notifications_none, onTap: onNotifTap),
+          child: _CircleIcon(
+            icon: Icons.notifications_none_rounded,
+            onTap: onNotifTap,
+          ),
         ),
       ],
     );
@@ -839,8 +775,26 @@ class _CircleIcon extends StatelessWidget {
 
   const _CircleIcon({required this.icon, this.userImage, required this.onTap});
 
+  ImageProvider? _resolveImageProvider(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    final v = value.trim();
+
+    try {
+      if (v.startsWith('http://') || v.startsWith('https://')) {
+        return NetworkImage(v);
+      }
+
+      final raw = v.contains(',') ? v.split(',').last : v;
+      return MemoryImage(base64Decode(raw));
+    } catch (_) {
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final imageProvider = _resolveImageProvider(userImage);
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(999),
@@ -848,167 +802,260 @@ class _CircleIcon extends StatelessWidget {
         width: 44,
         height: 44,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.04),
+          color: surfaceColor,
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.white.withOpacity(0.08)),
-          image: (userImage != null && userImage!.isNotEmpty)
-              ? DecorationImage(
-                  image: MemoryImage(base64Decode(userImage!.split(',').last)),
-                  fit: BoxFit.cover,
-                )
+          border: Border.all(color: softBorder),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          image: imageProvider != null
+              ? DecorationImage(image: imageProvider, fit: BoxFit.cover)
               : null,
         ),
-        child: (userImage == null || userImage!.isEmpty)
-            ? Center(child: Icon(icon, size: 22, color: Colors.white))
+        child: imageProvider == null
+            ? Center(child: Icon(icon, size: 20, color: textPrimary))
             : null,
       ),
     );
   }
 }
 
-class _HeroBanner extends StatelessWidget {
+/// =======================
+/// NOUVEAUX COMPOSANTS HOME
+/// =======================
+class _WelcomeCard extends StatelessWidget {
   final String name;
-  final String title;
-  final String meta;
-  final Color accent;
-  final VoidCallback onStart;
-  final String buttonText;
-  final IconData buttonIcon;
+  final int favoritesCount;
+  final int attendedCount;
 
-  const _HeroBanner({
+  const _WelcomeCard({
     required this.name,
-    required this.title,
-    required this.meta,
-    required this.accent,
-    required this.onStart,
-    this.buttonText = "DÉMARRER",
-    this.buttonIcon = Icons.play_arrow_rounded,
+    required this.favoritesCount,
+    required this.attendedCount,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(22),
-      child: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.35),
-              blurRadius: 26,
-              offset: const Offset(0, 14),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [const Color(0xFF111119), accent.withOpacity(0.16)],
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: softBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  "Bonjour $name",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: textPrimary,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 20,
+                    letterSpacing: -0.2,
+                  ),
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "BONJOUR $name",
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 18,
-                      letterSpacing: 0.4,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    "Prêt pour ta séance du jour ?\nC’est la régularité qui paye.",
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.78),
-                      fontSize: 13,
-                      height: 1.25,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(18),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFFF57809), Color(0xFF1A1A22)],
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: clubOrange.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.wb_sunny_outlined,
+                  color: clubOrange,
+                  size: 22,
                 ),
               ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title.toUpperCase(),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            "Bienvenue 👋 Prêt à t'entraîner aujourd'hui ?",
+            style: TextStyle(
+              color: textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              height: 1.3,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _InfoChip(
+                  icon: Icons.favorite_border_rounded,
+                  label: "$favoritesCount favoris",
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _InfoChip(
+                  icon: Icons.local_fire_department_outlined,
+                  label: "$attendedCount jours actifs",
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _InfoChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: softBorder),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: clubOrange),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: textPrimary,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FavoritesSummaryCard extends StatelessWidget {
+  final int count;
+  final List<String> favoriteNames;
+
+  const _FavoritesSummaryCard({
+    required this.count,
+    required this.favoriteNames,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasFavorites = count > 0;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: softBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: clubOrange.withOpacity(0.10),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.favorite_rounded, color: clubOrange),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Mes favoris",
+                  style: TextStyle(
+                    color: textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  hasFavorites
+                      ? "$count entraînement(s) enregistré(s)"
+                      : "Ajoute des entraînements en favoris avec le ❤️",
+                  style: const TextStyle(
+                    color: textSecondary,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                    height: 1.3,
+                  ),
+                ),
+                if (favoriteNames.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: favoriteNames.map((name) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF6ED),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: clubOrange.withOpacity(0.22),
+                          ),
+                        ),
+                        child: Text(
+                          name,
                           style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 20,
-                            letterSpacing: -0.2,
-                            fontStyle: FontStyle.italic,
+                            color: clubOrange,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          meta,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.88),
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        _GlassButton(
-                          onTap: onStart,
-                          accent: accent,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(buttonIcon, color: Colors.white, size: 20),
-                              const SizedBox(width: 8),
-                              Text(
-                                buttonText,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.white,
-                                  letterSpacing: 0.8,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const _GlassContainer(
-                    width: 66,
-                    height: 66,
-                    child: Icon(
-                      Icons.fitness_center_rounded,
-                      color: Colors.white,
-                    ),
+                      );
+                    }).toList(),
                   ),
                 ],
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1035,24 +1082,28 @@ class _SectionTitle extends StatelessWidget {
           child: Text(
             title,
             style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-              fontSize: 15,
-              letterSpacing: 1.0,
-              fontStyle: FontStyle.italic,
+              color: textPrimary,
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+              letterSpacing: -0.1,
             ),
           ),
         ),
         if (actionText != null && onAction != null)
           TextButton(
             onPressed: onAction,
+            style: TextButton.styleFrom(
+              foregroundColor: actionColor,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: const Size(0, 32),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
             child: Text(
-              actionText!.toUpperCase(),
+              actionText!,
               style: TextStyle(
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
                 color: actionColor,
-                letterSpacing: 1.0,
-                fontSize: 12,
+                fontSize: 12.5,
               ),
             ),
           ),
@@ -1067,6 +1118,8 @@ class _WorkoutCard extends StatelessWidget {
   final String imgUrl;
   final Color accent;
   final VoidCallback? onTap;
+  final bool isFavorite;
+  final VoidCallback? onFavoriteTap;
 
   const _WorkoutCard({
     required this.title,
@@ -1074,6 +1127,8 @@ class _WorkoutCard extends StatelessWidget {
     required this.imgUrl,
     required this.accent,
     this.onTap,
+    this.isFavorite = false,
+    this.onFavoriteTap,
   });
 
   @override
@@ -1081,99 +1136,162 @@ class _WorkoutCard extends StatelessWidget {
     return Container(
       width: 260,
       margin: const EdgeInsets.only(right: 12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(22),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Image.network(imgUrl, fit: BoxFit.cover),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [
-                      Colors.black.withOpacity(0.85),
-                      Colors.black.withOpacity(0.25),
-                      Colors.transparent,
-                    ],
-                  ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Ink(
+            decoration: BoxDecoration(
+              color: surfaceColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: softBorder),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.035),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Spacer(),
-                    Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 16,
-                        fontStyle: FontStyle.italic,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.78),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.16),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
+                  child: SizedBox(
+                    height: 120,
+                    width: double.infinity,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.network(
+                          imgUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: const Color(0xFFF1F3F5),
+                            child: Icon(
+                              Icons.image_not_supported_outlined,
+                              color: Colors.grey.shade500,
                             ),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.play_arrow_rounded,
-                                color: accent,
-                                size: 18,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                "LANCER",
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.92),
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 12,
-                                  letterSpacing: 1.0,
-                                ),
-                              ),
-                            ],
+                        ),
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                              colors: [
+                                Colors.black.withOpacity(0.18),
+                                Colors.transparent,
+                              ],
+                            ),
                           ),
                         ),
-                      ),
+                        Positioned(
+                          top: 10,
+                          right: 10,
+                          child: GestureDetector(
+                            onTap: onFavoriteTap,
+                            child: Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.92),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.white),
+                              ),
+                              child: Icon(
+                                isFavorite
+                                    ? Icons.favorite_rounded
+                                    : Icons.favorite_border_rounded,
+                                size: 18,
+                                color: isFavorite ? clubOrange : textSecondary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title.toUpperCase(),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: textPrimary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14.5,
+                            height: 1.15,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          subtitle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: textSecondary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            height: 1.25,
+                          ),
+                        ),
+                        const Spacer(),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 7,
+                              ),
+                              decoration: BoxDecoration(
+                                color: clubOrange.withOpacity(0.10),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.play_arrow_rounded,
+                                    color: clubOrange,
+                                    size: 16,
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    "Lancer",
+                                    style: TextStyle(
+                                      color: clubOrange,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Spacer(),
+                            Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 13,
+                              color: Colors.grey.shade500,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1194,125 +1312,115 @@ class _AttendanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(22),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.04),
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: Colors.white.withOpacity(0.06)),
+    final activeCount = points.where((e) => e.value > 0).length;
+    final percent = points.isEmpty
+        ? 0
+        : ((activeCount / points.length) * 100).round();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: softBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: accent.withOpacity(0.14),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: accent.withOpacity(0.30)),
-                    ),
-                    child: Icon(
-                      Icons.auto_graph_rounded,
-                      color: accent,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      "JOURS D’ENTRAÎNEMENT",
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.90),
-                        fontWeight: FontWeight.w900,
-                        fontStyle: FontStyle.italic,
-                        letterSpacing: 0.5,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                summaryText,
-                style: const TextStyle(
-                  color: Colors.white,
+              const Text(
+                "Régularité",
+                style: TextStyle(
+                  color: textPrimary,
                   fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                  height: 1.2,
+                  fontSize: 15,
                 ),
               ),
-              const SizedBox(height: 16),
-              SizedBox(
-                height: 80,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: points.map((p) {
-                    final on = p.value > 0;
-                    return Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 2.5),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 350),
-                          curve: Curves.easeOutExpo,
-                          height: on ? (p.isToday ? 74 : 54) : 16,
-                          decoration: BoxDecoration(
-                            color: on
-                                ? accent.withOpacity(p.isToday ? 1.0 : 0.70)
-                                : Colors.white.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(999),
                 ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    points.isNotEmpty ? points.first.dayLabel : "--/--",
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.40),
-                      fontWeight: FontWeight.w900,
-                      fontSize: 11,
-                      letterSpacing: 1.0,
-                    ),
+                child: Text(
+                  "$percent%",
+                  style: TextStyle(
+                    color: accent,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: accent.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      "AUJ.",
-                      style: TextStyle(
-                        color: accent,
-                        fontWeight: FontWeight.w900,
-                        fontStyle: FontStyle.italic,
-                        fontSize: 10,
-                        letterSpacing: 1.0,
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ],
           ),
-        ),
+          const SizedBox(height: 6),
+          Text(
+            summaryText,
+            style: const TextStyle(
+              color: textSecondary,
+              fontWeight: FontWeight.w500,
+              fontSize: 12.5,
+              height: 1.25,
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 54,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: points.map((p) {
+                final on = p.value > 0;
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOut,
+                      height: on ? (p.isToday ? 52 : 40) : 10,
+                      decoration: BoxDecoration(
+                        color: on
+                            ? accent.withOpacity(p.isToday ? 0.95 : 0.65)
+                            : const Color(0xFFEDEFF3),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Text(
+                points.isNotEmpty ? points.first.dayLabel : "--/--",
+                style: const TextStyle(
+                  color: textSecondary,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 11,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                points.isNotEmpty ? points.last.dayLabel : "--/--",
+                style: const TextStyle(
+                  color: textSecondary,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -1356,12 +1464,19 @@ class _NewsCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         child: Ink(
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.04),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withOpacity(0.06)),
+            color: surfaceColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: softBorder),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1369,7 +1484,7 @@ class _NewsCard extends StatelessWidget {
               // ✅ IMAGE HEADER
               ClipRRect(
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(20),
+                  top: Radius.circular(16),
                 ),
                 child: SizedBox(
                   height: 170,
@@ -1387,7 +1502,7 @@ class _NewsCard extends StatelessWidget {
                           loadingBuilder: (context, child, loadingProgress) {
                             if (loadingProgress == null) return child;
                             return Container(
-                              color: Colors.white.withOpacity(0.03),
+                              color: const Color(0xFFF6F7F9),
                               alignment: Alignment.center,
                               child: const SizedBox(
                                 width: 22,
@@ -1403,16 +1518,16 @@ class _NewsCard extends StatelessWidget {
                       else
                         _NewsImageFallback(accent: accent),
 
-                      // Overlay pour lisibilité
+                      // Overlay léger pour lisibilité du badge
                       DecoratedBox(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              Colors.black.withOpacity(0.12),
-                              Colors.black.withOpacity(0.25),
-                              Colors.black.withOpacity(0.70),
+                              Colors.black.withOpacity(0.08),
+                              Colors.black.withOpacity(0.05),
+                              Colors.black.withOpacity(0.22),
                             ],
                           ),
                         ),
@@ -1428,11 +1543,9 @@ class _NewsCard extends StatelessWidget {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.35),
+                            color: Colors.white.withOpacity(0.92),
                             borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.14),
-                            ),
+                            border: Border.all(color: Colors.white),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -1446,9 +1559,9 @@ class _NewsCard extends StatelessWidget {
                               Text(
                                 dateLabel,
                                 style: const TextStyle(
-                                  color: Colors.white,
+                                  color: textPrimary,
                                   fontSize: 11,
-                                  fontWeight: FontWeight.w800,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ],
@@ -1471,8 +1584,8 @@ class _NewsCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
+                        color: textPrimary,
+                        fontWeight: FontWeight.w700,
                         fontSize: 15,
                         height: 1.2,
                       ),
@@ -1482,9 +1595,9 @@ class _NewsCard extends StatelessWidget {
                       subtitle,
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.75),
-                        fontWeight: FontWeight.w600,
+                      style: const TextStyle(
+                        color: textSecondary,
+                        fontWeight: FontWeight.w500,
                         fontSize: 13,
                         height: 1.3,
                       ),
@@ -1494,19 +1607,19 @@ class _NewsCard extends StatelessWidget {
                       children: [
                         Icon(Icons.article_rounded, size: 16, color: accent),
                         const SizedBox(width: 6),
-                        Text(
+                        const Text(
                           "Lire l’actualité",
                           style: TextStyle(
-                            color: accent,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 12,
+                            color: clubOrange,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12.5,
                           ),
                         ),
                         const Spacer(),
                         Icon(
                           Icons.arrow_forward_ios_rounded,
                           size: 13,
-                          color: Colors.white.withOpacity(0.5),
+                          color: Colors.grey.shade500,
                         ),
                       ],
                     ),
@@ -1529,17 +1642,17 @@ class _NewsImageFallback extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.white.withOpacity(0.03),
+      color: const Color(0xFFF4F6F8),
       child: Stack(
         fit: StackFit.expand,
         children: [
           Positioned(
-            right: -20,
-            top: -10,
+            right: -12,
+            top: -8,
             child: Icon(
               Icons.fitness_center_rounded,
-              size: 120,
-              color: accent.withOpacity(0.10),
+              size: 100,
+              color: accent.withOpacity(0.08),
             ),
           ),
           Center(
@@ -1548,15 +1661,15 @@ class _NewsImageFallback extends StatelessWidget {
               children: [
                 Icon(
                   Icons.image_not_supported_rounded,
-                  color: Colors.white.withOpacity(0.55),
-                  size: 28,
+                  color: Colors.grey.shade500,
+                  size: 26,
                 ),
                 const SizedBox(height: 8),
-                Text(
+                const Text(
                   "Image indisponible",
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.60),
-                    fontWeight: FontWeight.w700,
+                    color: textSecondary,
+                    fontWeight: FontWeight.w600,
                     fontSize: 12,
                   ),
                 ),
