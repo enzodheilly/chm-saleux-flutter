@@ -99,6 +99,33 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  /// ✅ Convertit le champ "photo" de l'API en URL exploitable par Flutter
+  String? _buildArticleImageUrl(dynamic photoValue) {
+    if (photoValue == null) return null;
+
+    final raw = photoValue.toString().trim();
+    if (raw.isEmpty) return null;
+
+    // URL complète déjà prête
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      return raw;
+    }
+
+    // Chemin absolu depuis Symfony (ex: /uploads/monimage.jpg)
+    if (raw.startsWith('/')) {
+      return 'http://10.0.2.2:8000$raw';
+    }
+
+    // Si la BDD stocke déjà "uploads/monimage.jpg" (sans slash)
+    if (raw.startsWith('uploads/')) {
+      return 'http://10.0.2.2:8000/$raw';
+    }
+
+    // ✅ Cas le plus probable chez toi : juste "monimage.jpg"
+    // -> dossier public/uploads/
+    return 'http://10.0.2.2:8000/uploads/$raw';
+  }
+
   /// ✅ Programme recommandé simple (1er programme dispo)
   Map<String, dynamic>? _getRecommendedProgram() {
     if (allPrograms.isEmpty) return null;
@@ -523,18 +550,28 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
       itemCount: siteNews.length,
       itemBuilder: (context, index) {
-        final article = siteNews[index];
+        final article = siteNews[index] as Map<String, dynamic>;
+
+        final imageUrl = _buildArticleImageUrl(article['photo']);
+        final title = (article['title'] ?? "Titre indisponible").toString();
+        final subtitle =
+            (article['subtitle'] ??
+                    article['excerpt'] ??
+                    "Cliquez pour lire...")
+                .toString();
+        final publishedAt = article['publishedAt']?.toString();
 
         return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.only(bottom: 14),
           child: _NewsCard(
             accent: clubOrange,
-            title: article['title'] ?? "Titre indisponible",
-            subtitle:
-                article['subtitle'] ??
-                article['excerpt'] ??
-                "Cliquez pour lire...",
-            icon: Icons.article_rounded,
+            title: title,
+            subtitle: subtitle,
+            imageUrl: imageUrl,
+            publishedAt: publishedAt,
+            onTap: () {
+              // 🔜 Plus tard : écran détail actu
+            },
           ),
         );
       },
@@ -1285,54 +1322,242 @@ class _NewsCard extends StatelessWidget {
   final Color accent;
   final String title;
   final String subtitle;
-  final IconData icon;
+  final String? imageUrl;
+  final String? publishedAt;
+  final VoidCallback? onTap;
 
   const _NewsCard({
     required this.accent,
     required this.title,
     required this.subtitle,
-    required this.icon,
+    this.imageUrl,
+    this.publishedAt,
+    this.onTap,
   });
+
+  String _formatDate(String? isoString) {
+    if (isoString == null || isoString.isEmpty) return "Actualité";
+    try {
+      final dt = DateTime.parse(isoString).toLocal();
+      final d = dt.day.toString().padLeft(2, '0');
+      final m = dt.month.toString().padLeft(2, '0');
+      final y = dt.year.toString();
+      return "$d/$m/$y";
+    } catch (_) {
+      return "Actualité";
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dateLabel = _formatDate(publishedAt);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.04),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white.withOpacity(0.06)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ✅ IMAGE HEADER
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
+                child: SizedBox(
+                  height: 170,
+                  width: double.infinity,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (imageUrl != null)
+                        Image.network(
+                          imageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return _NewsImageFallback(accent: accent);
+                          },
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Container(
+                              color: Colors.white.withOpacity(0.03),
+                              alignment: Alignment.center,
+                              child: const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.2,
+                                  color: clubOrange,
+                                ),
+                              ),
+                            );
+                          },
+                        )
+                      else
+                        _NewsImageFallback(accent: accent),
+
+                      // Overlay pour lisibilité
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withOpacity(0.12),
+                              Colors.black.withOpacity(0.25),
+                              Colors.black.withOpacity(0.70),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // Badge date
+                      Positioned(
+                        top: 10,
+                        left: 10,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.35),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.14),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.calendar_today_rounded,
+                                size: 13,
+                                color: accent,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                dateLabel,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // ✅ TEXTE
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      subtitle,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.75),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        height: 1.3,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Icon(Icons.article_rounded, size: 16, color: accent),
+                        const SizedBox(width: 6),
+                        Text(
+                          "Lire l’actualité",
+                          style: TextStyle(
+                            color: accent,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const Spacer(),
+                        Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 13,
+                          color: Colors.white.withOpacity(0.5),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NewsImageFallback extends StatelessWidget {
+  final Color accent;
+
+  const _NewsImageFallback({required this.accent});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
-      ),
-      child: Row(
+      color: Colors.white.withOpacity(0.03),
+      child: Stack(
+        fit: StackFit.expand,
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: accent.withOpacity(0.18),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: accent.withOpacity(0.35)),
+          Positioned(
+            right: -20,
+            top: -10,
+            child: Icon(
+              Icons.fitness_center_rounded,
+              size: 120,
+              color: accent.withOpacity(0.10),
             ),
-            child: Icon(icon, color: accent),
           ),
-          const SizedBox(width: 12),
-          Expanded(
+          Center(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                  ),
+                Icon(
+                  Icons.image_not_supported_rounded,
+                  color: Colors.white.withOpacity(0.55),
+                  size: 28,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 8),
                 Text(
-                  subtitle,
+                  "Image indisponible",
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.75),
-                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withOpacity(0.60),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
                   ),
                 ),
               ],
