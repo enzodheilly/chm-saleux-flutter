@@ -1,21 +1,34 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'auth_service.dart';
 
 class NewsService {
-  // Remplace par l'URL de l'API de ton site
-  // Exemple WordPress : 'https://tonsite.com/wp-json/wp/v2/posts'
-  final String apiUrl = 'http://10.0.2.2:8000/api/actus';
+  static const String apiUrl = 'http://10.0.2.2:8000/api/actus';
 
   Future<List<dynamic>> getSiteNews() async {
     try {
-      final response = await http.get(Uri.parse(apiUrl));
+      final token = await AuthService().getToken();
+
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'Accept': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      debugPrint('NEWS status: ${response.statusCode}');
+      debugPrint('NEWS body: ${response.body}');
+
       if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else {
-        return [];
+        final decoded = json.decode(response.body);
+        if (decoded is List) return decoded;
       }
+
+      return [];
     } catch (e) {
-      print("Erreur fetch news: $e");
+      debugPrint("Erreur fetch news: $e");
       return [];
     }
   }
