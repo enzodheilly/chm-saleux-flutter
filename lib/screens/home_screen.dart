@@ -11,8 +11,8 @@ import 'progress_screen.dart';
 import '../services/auth_service.dart';
 import '../services/routine_service.dart';
 import '../services/news_service.dart';
-import 'training_screen.dart';
 import 'workout_player_screen.dart';
+import 'create_routine_screen.dart';
 
 // ✅ Const global
 const Color clubOrange = Color(0xFFF57809);
@@ -230,7 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     index: _selectedIndex,
                     children: [
                       _buildHomeContent(),
-                      const TrainingScreen(),
+                      const CreateRoutineScreen(), // ✅ OK
                       const ProgressScreen(),
                       const Center(
                         child: Text(

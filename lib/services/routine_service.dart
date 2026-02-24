@@ -53,19 +53,309 @@ class RoutineService {
     return [];
   }
 
-  // --- 3. DÉTAILS D'UNE ROUTINE (Player) ---
-  Future<Map<String, dynamic>?> getRoutineDetails(int routineId) async {
+  // --- 2.bis MES ROUTINES PERSO ---
+  Future<List<dynamic>> getMyCustomRoutines() async {
+    try {
+      final token = await AuthService().getToken();
+      if (token == null) return [];
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/custom-routines/me'),
+        headers: _headers(token),
+      );
+
+      print("📍 GET MyCustomRoutines -> ${response.request?.url}");
+      print("📡 Status: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+
+        // Cas 1: API renvoie directement une liste
+        if (decoded is List) return decoded;
+
+        // Cas 2: API renvoie un objet avec une clé data/items/routines
+        if (decoded is Map<String, dynamic>) {
+          if (decoded['routines'] is List) return decoded['routines'] as List;
+          if (decoded['items'] is List) return decoded['items'] as List;
+          if (decoded['data'] is List) return decoded['data'] as List;
+
+          // Compat API Platform / Hydra
+          if (decoded['hydra:member'] is List) {
+            return decoded['hydra:member'] as List;
+          }
+        }
+      } else {
+        print("⚠️ GET MyCustomRoutines refusé: ${response.body}");
+      }
+    } catch (e) {
+      print("Erreur RoutineService (MyCustomRoutines): $e");
+    }
+    return [];
+  }
+
+  // --- 2.ter TOUS LES EXERCICES (pour le créateur de routine) ---
+  Future<List<dynamic>> getAllExercises() async {
+    try {
+      final token = await AuthService().getToken();
+      if (token == null) return [];
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/exercises'),
+        headers: _headers(token),
+      );
+
+      print("📍 GET AllExercises -> ${response.request?.url}");
+      print("📡 Status: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+
+        // Cas 1: liste directe
+        if (decoded is List) return decoded;
+
+        // Cas 2: wrapper
+        if (decoded is Map<String, dynamic>) {
+          if (decoded['exercises'] is List) return decoded['exercises'] as List;
+          if (decoded['items'] is List) return decoded['items'] as List;
+          if (decoded['data'] is List) return decoded['data'] as List;
+
+          // Compat API Platform / Hydra
+          if (decoded['hydra:member'] is List) {
+            return decoded['hydra:member'] as List;
+          }
+        }
+      } else {
+        print("⚠️ GET AllExercises refusé: ${response.body}");
+      }
+    } catch (e) {
+      print("Erreur RoutineService (AllExercises): $e");
+    }
+    return [];
+  }
+
+  // --- 2.quater CRÉER UNE ROUTINE PERSO ---
+  // ✅ Retourne un Map (id, name, raw) si succès, sinon null
+  Future<Map<String, dynamic>?> createCustomRoutine({
+    required String name,
+    required List<Map<String, dynamic>> exercises,
+  }) async {
+    try {
+      final token = await AuthService().getToken();
+      if (token == null) return null;
+
+      final url = Uri.parse('$baseUrl/custom-routines');
+      final payload = {"name": name, "exercises": exercises};
+
+      print("📍 POST CreateCustomRoutine -> $url");
+      print("📦 Payload: ${jsonEncode(payload)}");
+
+      final response = await http.post(
+        url,
+        headers: _headers(token),
+        body: jsonEncode(payload),
+      );
+
+      print("📡 Status: ${response.statusCode}");
+      print("📨 Body: ${response.body}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (response.body.trim().isNotEmpty) {
+          final decoded = json.decode(response.body);
+
+          if (decoded is Map<String, dynamic>) {
+            return {
+              "id": (decoded['id'] as num?)?.toInt(),
+              "name": (decoded['name'] ?? name).toString(),
+              "raw": decoded,
+            };
+          }
+
+          return {"id": null, "name": name, "raw": decoded};
+        }
+
+        return {"id": null, "name": name};
+      }
+
+      return null;
+    } catch (e) {
+      print("Erreur RoutineService (CreateCustomRoutine): $e");
+      return null;
+    }
+  }
+
+  // --- 2.quinquies DÉTAIL D'UNE ROUTINE PERSO ---
+  Future<Map<String, dynamic>?> getCustomRoutineDetails(int routineId) async {
     try {
       final token = await AuthService().getToken();
       if (token == null) return null;
 
       final response = await http.get(
-        Uri.parse('$baseUrl/programs/$routineId'),
+        Uri.parse('$baseUrl/custom-routines/$routineId'),
         headers: _headers(token),
       );
 
+      print("📍 GET CustomRoutineDetails -> ${response.request?.url}");
+      print("📡 Status: ${response.statusCode}");
+
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
+        if (decoded is Map<String, dynamic>) return decoded;
+      } else {
+        print("⚠️ GET CustomRoutineDetails refusé: ${response.body}");
+      }
+    } catch (e) {
+      print("Erreur RoutineService (CustomRoutineDetails): $e");
+    }
+    return null;
+  }
+
+  // --- 2.six UPDATE ROUTINE PERSO ---
+  Future<Map<String, dynamic>?> updateCustomRoutine({
+    required int routineId,
+    required String name,
+    required List<Map<String, dynamic>> exercises,
+  }) async {
+    try {
+      final token = await AuthService().getToken();
+      if (token == null) return null;
+
+      final url = Uri.parse('$baseUrl/custom-routines/$routineId');
+      final payload = {"name": name, "exercises": exercises};
+
+      print("📍 PUT UpdateCustomRoutine -> $url");
+      print("📦 Payload: ${jsonEncode(payload)}");
+
+      final response = await http.put(
+        url,
+        headers: _headers(token),
+        body: jsonEncode(payload),
+      );
+
+      print("📡 Status: ${response.statusCode}");
+      print("📨 Body: ${response.body}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (response.body.trim().isNotEmpty) {
+          final decoded = json.decode(response.body);
+
+          if (decoded is Map<String, dynamic>) {
+            return {
+              "id": (decoded['id'] as num?)?.toInt() ?? routineId,
+              "name": (decoded['name'] ?? name).toString(),
+              "raw": decoded,
+            };
+          }
+
+          return {"id": routineId, "name": name, "raw": decoded};
+        }
+
+        return {"id": routineId, "name": name};
+      }
+
+      return null;
+    } catch (e) {
+      print("Erreur RoutineService (UpdateCustomRoutine): $e");
+      return null;
+    }
+  }
+
+  // --- 2.sept DELETE ROUTINE PERSO ---
+  Future<bool> deleteCustomRoutine(int routineId) async {
+    try {
+      final token = await AuthService().getToken();
+      if (token == null) return false;
+
+      final response = await http.delete(
+        Uri.parse('$baseUrl/custom-routines/$routineId'),
+        headers: _headers(token),
+      );
+
+      print("📍 DELETE CustomRoutine -> ${response.request?.url}");
+      print("📡 Status: ${response.statusCode}");
+      print("📨 Body: ${response.body}");
+
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      print("Erreur RoutineService (DeleteCustomRoutine): $e");
+      return false;
+    }
+  }
+
+  // --- 2.huit DUPLICATE ROUTINE PERSO ---
+  Future<Map<String, dynamic>?> duplicateCustomRoutine(int routineId) async {
+    try {
+      final token = await AuthService().getToken();
+      if (token == null) return null;
+
+      final url = Uri.parse('$baseUrl/custom-routines/$routineId/duplicate');
+
+      final response = await http.post(url, headers: _headers(token));
+
+      print("📍 POST DuplicateCustomRoutine -> $url");
+      print("📡 Status: ${response.statusCode}");
+      print("📨 Body: ${response.body}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (response.body.trim().isNotEmpty) {
+          final decoded = json.decode(response.body);
+
+          if (decoded is Map<String, dynamic>) {
+            return {
+              "id": (decoded['id'] as num?)?.toInt(),
+              "name": (decoded['name'] ?? 'Routine dupliquée').toString(),
+              "raw": decoded,
+            };
+          }
+
+          return {"id": null, "name": "Routine dupliquée", "raw": decoded};
+        }
+
+        return {"id": null, "name": "Routine dupliquée"};
+      }
+
+      return null;
+    } catch (e) {
+      print("Erreur RoutineService (DuplicateCustomRoutine): $e");
+      return null;
+    }
+  }
+
+  // --- 3. DÉTAILS D'UNE ROUTINE (Player) ---
+  // ✅ Essaye /programs/{id} puis fallback /custom-routines/{id}
+  Future<Map<String, dynamic>?> getRoutineDetails(int routineId) async {
+    try {
+      final token = await AuthService().getToken();
+      if (token == null) return null;
+
+      final headers = _headers(token);
+
+      // 1) Routine programme
+      final responseProgram = await http.get(
+        Uri.parse('$baseUrl/programs/$routineId'),
+        headers: headers,
+      );
+
+      print(
+        "📍 GET RoutineDetails(program) -> ${responseProgram.request?.url}",
+      );
+      print("📡 Status(program): ${responseProgram.statusCode}");
+
+      if (responseProgram.statusCode == 200) {
+        final decoded = json.decode(responseProgram.body);
+        if (decoded is Map<String, dynamic>) return decoded;
+      }
+
+      // 2) Fallback routine perso
+      final responseCustom = await http.get(
+        Uri.parse('$baseUrl/custom-routines/$routineId'),
+        headers: headers,
+      );
+
+      print("📍 GET RoutineDetails(custom) -> ${responseCustom.request?.url}");
+      print("📡 Status(custom): ${responseCustom.statusCode}");
+
+      if (responseCustom.statusCode == 200) {
+        final decoded = json.decode(responseCustom.body);
         if (decoded is Map<String, dynamic>) return decoded;
       }
     } catch (e) {
