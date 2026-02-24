@@ -15,13 +15,13 @@ import 'workout_player_screen.dart';
 import 'create_routine_screen.dart';
 import 'profile_screen.dart';
 
-// ✅ Palette light / moderne
 const Color clubOrange = Color(0xFFF57809);
-const Color appBackground = Color(0xFFF6F7F9);
-const Color surfaceColor = Colors.white;
-const Color textPrimary = Color(0xFF15171C);
-const Color textSecondary = Color(0xFF757C87);
-const Color softBorder = Color(0xFFE9EDF2);
+const Color appBackground = Color(0xFF000000);
+const Color navBarColor = Color(0xFF000000);
+const Color surfaceColor = Color(0xFF222222);
+const Color textPrimary = Color(0xFFFFFFFF);
+const Color textSecondary = Color(0xFFA0A5B1);
+const Color softBorder = Color(0xFF333333);
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -31,14 +31,11 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // ✅ NAV
   int _selectedIndex = 0;
 
-  // ✅ PROFIL
   String currentUserName = "ATHLÈTE";
   String? profileImageUrl;
 
-  // ✅ DATA
   List<dynamic> allPrograms = [];
   List<dynamic> lastSessions = [];
   List<dynamic> siteNews = [];
@@ -47,17 +44,15 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isLoading = true;
   bool isNewsLoading = true;
 
-  // ✅ Favoris (local UI pour le moment)
   final Set<int> _favoriteRoutineIds = <int>{};
 
   @override
   void initState() {
     super.initState();
     _fetchCoreData();
-    _fetchNews(); // ✅ non bloquant
+    _fetchNews();
   }
 
-  /// ✅ Charge les données essentielles de la Home (rapide)
   Future<void> _fetchCoreData() async {
     try {
       final results = await Future.wait([
@@ -91,7 +86,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// ✅ Charge les news séparément pour ne pas bloquer l’accueil
   Future<void> _fetchNews() async {
     try {
       final news = await NewsService().getSiteNews();
@@ -107,44 +101,21 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// ✅ Convertit le champ "photo" de l'API en URL exploitable par Flutter
   String? _buildArticleImageUrl(dynamic photoValue) {
     if (photoValue == null) return null;
-
     final raw = photoValue.toString().trim();
     if (raw.isEmpty) return null;
 
-    // URL complète déjà prête
     if (raw.startsWith('http://') || raw.startsWith('https://')) {
       return raw;
     }
-
-    // Chemin absolu depuis Symfony (ex: /uploads/monimage.jpg)
     if (raw.startsWith('/')) {
       return 'http://10.0.2.2:8000$raw';
     }
-
-    // Si la BDD stocke déjà "uploads/monimage.jpg" (sans slash)
     if (raw.startsWith('uploads/')) {
       return 'http://10.0.2.2:8000/$raw';
     }
-
-    // ✅ Cas probable : juste "monimage.jpg" -> public/uploads/
     return 'http://10.0.2.2:8000/uploads/$raw';
-  }
-
-  /// ✅ Programme recommandé simple (1er programme dispo)
-  Map<String, dynamic>? _getRecommendedProgram() {
-    if (allPrograms.isEmpty) return null;
-    final first = allPrograms.first;
-    if (first is Map<String, dynamic>) return first;
-    return null;
-  }
-
-  int? _toInt(dynamic value) {
-    if (value is int) return value;
-    if (value is String) return int.tryParse(value);
-    return null;
   }
 
   void _toggleFavorite(int routineId) {
@@ -155,20 +126,6 @@ class _HomeScreenState extends State<HomeScreen> {
         _favoriteRoutineIds.add(routineId);
       }
     });
-  }
-
-  List<Map<String, dynamic>> _buildFavoritePrograms() {
-    if (_favoriteRoutineIds.isEmpty) return [];
-
-    final result = <Map<String, dynamic>>[];
-    for (final p in allPrograms) {
-      if (p is! Map<String, dynamic>) continue;
-      final id = _toInt(p['id']);
-      if (id != null && _favoriteRoutineIds.contains(id)) {
-        result.add(p);
-      }
-    }
-    return result;
   }
 
   String _getImageForGroup(String groupName) {
@@ -274,8 +231,8 @@ class _HomeScreenState extends State<HomeScreen> {
         bottom: false,
         child: Column(
           children: [
-            // ✅ TOP BAR GLOBALE (Fixe en haut)
-            Padding(
+            Container(
+              color: navBarColor,
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
               child: _TopBar(
                 title: "chm saleux",
@@ -286,15 +243,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     context,
                     MaterialPageRoute(builder: (_) => const ProfileScreen()),
                   );
-
-                  // ✅ Refresh de la home au retour (si photo / nom modifié)
                   _fetchCoreData();
                 },
                 onNotifTap: () {},
               ),
             ),
 
-            // ✅ CONTENU
             Expanded(
               child: Stack(
                 children: [
@@ -325,7 +279,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
 
-                  // 🔥 BARRE DE REPRISE
                   Consumer<WorkoutManager>(
                     builder: (context, manager, child) {
                       if (!manager.isActive) return const SizedBox.shrink();
@@ -339,7 +292,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
 
-                  // ✅ BOTTOM NAV BAR FLOTTANTE
                   Positioned(
                     left: 0,
                     right: 0,
@@ -360,7 +312,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ✅ Contenu Accueil (Sans la TopBar)
   Widget _buildHomeContent() {
     return DefaultTabController(
       length: 2,
@@ -411,34 +362,21 @@ class _HomeScreenState extends State<HomeScreen> {
     final forYou = _buildForYouPrograms();
     final attendance = _buildAttendancePoints(days: 14);
     final attendedCount = attendance.where((e) => e.value > 0).length;
-    final favoritePrograms = _buildFavoritePrograms();
 
     return ListView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.only(bottom: 140),
       children: [
-        // ✅ NOUVEAU BLOC BONJOUR (sans la partie entraînement)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: _WelcomeCard(
-            name: currentUserName,
-            favoritesCount: _favoriteRoutineIds.length,
-            attendedCount: attendedCount,
-          ),
+          child: _WelcomeCard(name: currentUserName),
         ),
 
         const SizedBox(height: 18),
 
-        // ✅ CASE MES FAVORIS
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: _FavoritesSummaryCard(
-            count: _favoriteRoutineIds.length,
-            favoriteNames: favoritePrograms
-                .take(3)
-                .map((e) => (e['name'] ?? 'Séance').toString())
-                .toList(),
-          ),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.0),
+          child: _FavoritesSummaryCard(),
         ),
 
         const SizedBox(height: 24),
@@ -565,9 +503,7 @@ class _HomeScreenState extends State<HomeScreen> {
             subtitle: subtitle,
             imageUrl: imageUrl,
             publishedAt: publishedAt,
-            onTap: () {
-              // 🔜 Plus tard : écran détail actu
-            },
+            onTap: () {},
           ),
         );
       },
@@ -575,9 +511,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-/// =======================
-/// BOTTOM NAV BAR (theme clair)
-/// =======================
 class _GlassBottomNav extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;
@@ -596,12 +529,12 @@ class _GlassBottomNav extends StatelessWidget {
             height: 78,
             padding: const EdgeInsets.symmetric(horizontal: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.92),
+              color: navBarColor.withOpacity(0.95),
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: softBorder),
+              // Plus de bordure ici non plus pour rester cohérent
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withOpacity(0.5),
                   blurRadius: 18,
                   offset: const Offset(0, 8),
                 ),
@@ -715,9 +648,6 @@ class _NavItem extends StatelessWidget {
   }
 }
 
-/// =======================
-/// TOP BAR
-/// =======================
 class _TopBar extends StatelessWidget {
   final String title;
   final int notifCount;
@@ -804,10 +734,10 @@ class _CircleIcon extends StatelessWidget {
         decoration: BoxDecoration(
           color: surfaceColor,
           shape: BoxShape.circle,
-          border: Border.all(color: softBorder),
+          // Plus de bordure ici
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withOpacity(0.2),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -824,31 +754,23 @@ class _CircleIcon extends StatelessWidget {
   }
 }
 
-/// =======================
-/// NOUVEAUX COMPOSANTS HOME
-/// =======================
 class _WelcomeCard extends StatelessWidget {
   final String name;
-  final int favoritesCount;
-  final int attendedCount;
 
-  const _WelcomeCard({
-    required this.name,
-    required this.favoritesCount,
-    required this.attendedCount,
-  });
+  const _WelcomeCard({required this.name});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      height: 140, // ✅ Hauteur fixe définie
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: softBorder),
+        color: const Color(0xFFF57809),
+        borderRadius: BorderRadius.circular(0),
+        // Plus de bordure, juste l'ombre
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withOpacity(0.3),
             blurRadius: 18,
             offset: const Offset(0, 8),
           ),
@@ -857,98 +779,28 @@ class _WelcomeCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  "Bonjour $name",
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: textPrimary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 20,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-              ),
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: clubOrange.withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.wb_sunny_outlined,
-                  color: clubOrange,
-                  size: 22,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            "Bienvenue 👋 Prêt à t'entraîner aujourd'hui ?",
-            style: TextStyle(
-              color: textSecondary,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              height: 1.3,
+          Text(
+            "BONJOUR $name", // ✅ Mis en majuscules
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 22,
+              letterSpacing: -0.2,
             ),
           ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _InfoChip(
-                  icon: Icons.favorite_border_rounded,
-                  label: "$favoritesCount favoris",
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _InfoChip(
-                  icon: Icons.local_fire_department_outlined,
-                  label: "$attendedCount jours actifs",
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _InfoChip({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: softBorder),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: clubOrange),
-          const SizedBox(width: 8),
-          Expanded(
+          const SizedBox(height: 10),
+          const Expanded(
             child: Text(
-              label,
-              maxLines: 1,
+              "Prêt à repousser tes limites ?\nChaque répétition te rapproche de ton objectif.\nDonne le maximum aujourd'hui !", // ✅ Texte court sur 3 lignes
+              maxLines: 3,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: textPrimary,
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                height: 1.4,
               ),
             ),
           ),
@@ -959,103 +811,71 @@ class _InfoChip extends StatelessWidget {
 }
 
 class _FavoritesSummaryCard extends StatelessWidget {
-  final int count;
-  final List<String> favoriteNames;
-
-  const _FavoritesSummaryCard({
-    required this.count,
-    required this.favoriteNames,
-  });
+  const _FavoritesSummaryCard();
 
   @override
   Widget build(BuildContext context) {
-    final hasFavorites = count > 0;
-
     return Container(
-      padding: const EdgeInsets.all(16),
+      height: 140,
       decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: softBorder),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(0),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: clubOrange.withOpacity(0.10),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.favorite_rounded, color: clubOrange),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "Mes favoris",
+      // Ce ClipRRect global s'assure que si l'image dépasse, elle est coupée proprement dans l'arrondi
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // ✅ LE TEXTE (À gauche)
+            const Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(left: 20.0),
+                child: Text(
+                  "MES FAVORIS",
                   style: TextStyle(
-                    color: textPrimary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
+                    color: Colors.black,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                    letterSpacing: 1.2,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  hasFavorites
-                      ? "$count entraînement(s) enregistré(s)"
-                      : "Ajoute des entraînements en favoris avec le ❤️",
-                  style: const TextStyle(
-                    color: textSecondary,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w500,
-                    height: 1.3,
-                  ),
-                ),
-                if (favoriteNames.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: favoriteNames.map((name) {
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFF6ED),
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(
-                            color: clubOrange.withOpacity(0.22),
-                          ),
-                        ),
-                        child: Text(
-                          name,
-                          style: const TextStyle(
-                            color: clubOrange,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ],
+              ),
             ),
-          ),
-        ],
+
+            // ✅ L'IMAGE (À droite, avec padding et réglage haut/bas)
+            Padding(
+              padding: const EdgeInsets.only(
+                right: 0,
+              ), // 👈 1. Padding à droite remis ici !
+              child: Transform.translate(
+                // 👈 2. L'OPTION POUR MONTER OU DESCENDRE !
+                // Offset(X, Y) :
+                // X = 0 (on ne bouge pas de gauche à droite)
+                // Y = 10 (nombre positif = descendre | nombre négatif ex: -10 = monter)
+                offset: const Offset(0, 10),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(
+                    12,
+                  ), // On remet des petits bords arrondis à l'image
+                  child: Image.asset(
+                    'assets/images/image.png',
+                    width: 140, // Taille de l'image
+                    height: 140, // Taille de l'image
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1145,12 +965,12 @@ class _WorkoutCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: surfaceColor,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: softBorder),
+              // ✅ Plus de bordure (border retiré)
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.035),
-                  blurRadius: 14,
-                  offset: const Offset(0, 6),
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
@@ -1184,7 +1004,7 @@ class _WorkoutCard extends StatelessWidget {
                               begin: Alignment.bottomCenter,
                               end: Alignment.topCenter,
                               colors: [
-                                Colors.black.withOpacity(0.18),
+                                Colors.black.withOpacity(0.4),
                                 Colors.transparent,
                               ],
                             ),
@@ -1201,7 +1021,6 @@ class _WorkoutCard extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.92),
                                 borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.white),
                               ),
                               child: Icon(
                                 isFavorite
@@ -1255,7 +1074,7 @@ class _WorkoutCard extends StatelessWidget {
                                 vertical: 7,
                               ),
                               decoration: BoxDecoration(
-                                color: clubOrange.withOpacity(0.10),
+                                color: clubOrange.withOpacity(0.15),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: const Row(
@@ -1282,7 +1101,7 @@ class _WorkoutCard extends StatelessWidget {
                             Icon(
                               Icons.arrow_forward_ios_rounded,
                               size: 13,
-                              color: Colors.grey.shade500,
+                              color: textSecondary,
                             ),
                           ],
                         ),
@@ -1322,12 +1141,12 @@ class _AttendanceCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: surfaceColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: softBorder),
+        // ✅ Plus de bordure (border retiré)
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -1348,7 +1167,7 @@ class _AttendanceCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                 decoration: BoxDecoration(
-                  color: accent.withOpacity(0.10),
+                  color: accent.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
@@ -1389,7 +1208,7 @@ class _AttendanceCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: on
                             ? accent.withOpacity(p.isToday ? 0.95 : 0.65)
-                            : const Color(0xFFEDEFF3),
+                            : softBorder,
                         borderRadius: BorderRadius.circular(3),
                       ),
                     ),
@@ -1469,19 +1288,18 @@ class _NewsCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: surfaceColor,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: softBorder),
+            // ✅ Plus de bordure (border retiré)
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.03),
-                blurRadius: 14,
-                offset: const Offset(0, 6),
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ✅ IMAGE HEADER
               ClipRRect(
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(16),
@@ -1502,7 +1320,7 @@ class _NewsCard extends StatelessWidget {
                           loadingBuilder: (context, child, loadingProgress) {
                             if (loadingProgress == null) return child;
                             return Container(
-                              color: const Color(0xFFF6F7F9),
+                              color: softBorder,
                               alignment: Alignment.center,
                               child: const SizedBox(
                                 width: 22,
@@ -1518,22 +1336,19 @@ class _NewsCard extends StatelessWidget {
                       else
                         _NewsImageFallback(accent: accent),
 
-                      // Overlay léger pour lisibilité du badge
                       DecoratedBox(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              Colors.black.withOpacity(0.08),
-                              Colors.black.withOpacity(0.05),
-                              Colors.black.withOpacity(0.22),
+                              Colors.black.withOpacity(0.3),
+                              Colors.transparent,
                             ],
                           ),
                         ),
                       ),
 
-                      // Badge date
                       Positioned(
                         top: 10,
                         left: 10,
@@ -1545,7 +1360,6 @@ class _NewsCard extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.92),
                             borderRadius: BorderRadius.circular(999),
-                            border: Border.all(color: Colors.white),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -1559,7 +1373,7 @@ class _NewsCard extends StatelessWidget {
                               Text(
                                 dateLabel,
                                 style: const TextStyle(
-                                  color: textPrimary,
+                                  color: Colors.black,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -1573,7 +1387,6 @@ class _NewsCard extends StatelessWidget {
                 ),
               ),
 
-              // ✅ TEXTE
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
                 child: Column(
@@ -1619,7 +1432,7 @@ class _NewsCard extends StatelessWidget {
                         Icon(
                           Icons.arrow_forward_ios_rounded,
                           size: 13,
-                          color: Colors.grey.shade500,
+                          color: textSecondary,
                         ),
                       ],
                     ),
@@ -1642,7 +1455,7 @@ class _NewsImageFallback extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFFF4F6F8),
+      color: softBorder,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -1661,7 +1474,7 @@ class _NewsImageFallback extends StatelessWidget {
               children: [
                 Icon(
                   Icons.image_not_supported_rounded,
-                  color: Colors.grey.shade500,
+                  color: textSecondary,
                   size: 26,
                 ),
                 const SizedBox(height: 8),
@@ -1682,9 +1495,6 @@ class _NewsImageFallback extends StatelessWidget {
   }
 }
 
-/// =======================
-/// MODELS
-/// =======================
 class _DayPoint {
   final String dayLabel;
   final int value;
