@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
+import '../services/auth_service.dart'; // ✅ N'oublie pas d'importer ton service
+
 const Color clubOrange = Color(0xFFF57809);
 const Color darkBg = Color(0xFF0B0B0F);
 const Color cardSurface = Color(0xFF16161C);
@@ -18,7 +20,12 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _xpController;
   late final Animation<double> _xpAppear;
-  late final Animation<int> _xpCount;
+  late Animation<int>
+  _xpCount; // ✅ Plus en 'final' car on la met à jour dynamiquement
+
+  bool _isSavingXp = true; // ✅ Indique si on est en train de sauvegarder l'XP
+  bool _hasLeveledUp = false;
+  int _newLevel = 1;
 
   int _toInt(dynamic v) =>
       v is num ? v.toInt() : int.tryParse("${v ?? 0}") ?? 0;
@@ -46,49 +53,38 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
   }
 
   int _calcXp(double totalVolume, int totalSets, int durationSec) {
-    // ✅ XP simple mais cohérent : volume + séries + durée
+    // XP simple mais cohérent : volume + séries + durée
     final base = 50;
     final bonusVol = (totalVolume / 250).floor() * 10;
     final bonusSets = (totalSets / 10).floor() * 10;
-    final bonusTime = (durationSec / 900).floor() * 10; // +10 toutes les 15min
+    final bonusTime = (durationSec / 900).floor() * 10;
     return base + bonusVol + bonusSets + bonusTime;
   }
 
-  // ✅ Banner image (même logique TrainingScreen)
   String _getBannerImage(String routineName) {
     final name = routineName.toLowerCase().trim();
 
-    if (name.contains("pec") || name.contains("chest")) {
+    if (name.contains("pec") || name.contains("chest"))
       return "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=1200&q=80";
-    }
-    if (name.contains("dos") || name.contains("back")) {
+    if (name.contains("dos") || name.contains("back"))
       return "https://images.unsplash.com/photo-1603287681836-e54f0e4475ac?w=1200&q=80";
-    }
-    if (name.contains("jambe") || name.contains("leg")) {
+    if (name.contains("jambe") || name.contains("leg"))
       return "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=1200&q=80";
-    }
-    if (name.contains("bras") || name.contains("arm")) {
+    if (name.contains("bras") || name.contains("arm"))
       return "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=1200&q=80";
-    }
-    if (name.contains("epaule") || name.contains("shoulder")) {
+    if (name.contains("epaule") || name.contains("shoulder"))
       return "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=1200&q=80";
-    }
-    if (name.contains("abdo") || name.contains("abs")) {
+    if (name.contains("abdo") || name.contains("abs"))
       return "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=1200&q=80";
-    }
-    if (name.contains("cardio") || name.contains("run")) {
+    if (name.contains("cardio") || name.contains("run"))
       return "https://images.unsplash.com/photo-1538805060504-6335d7aa1b7e?w=1200&q=80";
-    }
-    if (name.contains("full") || name.contains("body")) {
+    if (name.contains("full") || name.contains("body"))
       return "https://images.unsplash.com/photo-1517963879466-e9b5ce3825bf?w=1200&q=80";
-    }
 
     return "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&q=80";
   }
 
   int _getTotalSets() {
-    // ✅ tu peux envoyer ce champ depuis WorkoutManager
-    // Exemple: sessionData['total_sets'] = manager.totalCompletedSets;
     final raw =
         widget.stats['total_sets'] ??
         widget.stats['totalCompletedSets'] ??
@@ -101,12 +97,6 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
   void initState() {
     super.initState();
 
-    final totalSeconds = _toInt(widget.stats['duration_seconds']);
-    final totalVolume = _toDouble(widget.stats['total_volume']);
-    final totalSets = _getTotalSets();
-
-    final xp = _calcXp(totalVolume, totalSets, totalSeconds);
-
     _xpController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
@@ -117,14 +107,136 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
       curve: Curves.easeOutBack,
     );
 
-    _xpCount = IntTween(begin: 0, end: xp).animate(
-      CurvedAnimation(parent: _xpController, curve: Curves.easeOutExpo),
-    );
+    // Initialisation vide en attendant la réponse du serveur
+    _xpCount = IntTween(begin: 0, end: 0).animate(_xpController);
 
-    // petite latence pour effet “pop”
-    Future.delayed(const Duration(milliseconds: 200), () {
-      if (mounted) _xpController.forward();
+    // ✅ On lance la sauvegarde de l'XP
+    _processWorkoutAndXp();
+  }
+
+  /// ✅ Méthode pour gérer la sauvegarde et l'animation de l'XP
+  Future<void> _processWorkoutAndXp() async {
+    final totalSeconds = _toInt(widget.stats['duration_seconds']);
+    final totalVolume = _toDouble(widget.stats['total_volume']);
+    final totalSets = _getTotalSets();
+
+    // 1. Calcul de l'XP gagné
+    final gainedXp = _calcXp(totalVolume, totalSets, totalSeconds);
+
+    // 2. Sauvegarde en BDD
+    final result = await AuthService().addXpToUser(gainedXp);
+
+    if (!mounted) return;
+
+    setState(() {
+      _isSavingXp = false;
+      if (result != null) {
+        _hasLeveledUp = result['has_leveled_up'] ?? false;
+        _newLevel = result['new_level'] ?? 1;
+      }
+
+      // 3. Mise à jour de l'animation avec la vraie valeur
+      _xpCount = IntTween(begin: 0, end: gainedXp).animate(
+        CurvedAnimation(parent: _xpController, curve: Curves.easeOutExpo),
+      );
     });
+
+    _xpController.forward();
+
+    // 4. Si level up, on affiche la modale après l'animation
+    if (_hasLeveledUp) {
+      Future.delayed(const Duration(milliseconds: 1200), () {
+        if (mounted) _showLevelUpDialog(_newLevel);
+      });
+    }
+  }
+
+  /// ✅ Modale stylisée pour célébrer le Level Up
+  void _showLevelUpDialog(int level) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: cardSurface,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: clubOrange.withOpacity(0.3)),
+            boxShadow: [
+              BoxShadow(
+                color: clubOrange.withOpacity(0.15),
+                blurRadius: 40,
+                spreadRadius: 5,
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: clubOrange.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.star_rounded,
+                  color: clubOrange,
+                  size: 54,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                "NIVEAU SUPÉRIEUR !",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  fontStyle: FontStyle.italic,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                "Félicitations, tes efforts paient ! Tu as atteint le niveau $level.",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.7),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 28),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: clubOrange,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    "CONTINUER",
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -137,16 +249,12 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
   Widget build(BuildContext context) {
     final int totalSeconds = _toInt(widget.stats['duration_seconds']);
     final String duration = _formatDuration(totalSeconds);
-
     final double totalVolume = _toDouble(widget.stats['total_volume']);
     final String volumeLabel = "${totalVolume.toInt()} kg";
-
     final int totalSets = _getTotalSets();
-
     final String dateLabel = _formatDateLabel(widget.stats['performed_at']);
     final String routineName = (widget.stats['routine_name'] ?? "Ta séance")
         .toString();
-
     final String bannerUrl =
         (widget.stats['banner_url']?.toString().isNotEmpty ?? false)
         ? widget.stats['banner_url'].toString()
@@ -176,7 +284,6 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
             child: CustomScrollView(
               physics: const BouncingScrollPhysics(),
               slivers: [
-                // ✅ HERO
                 SliverAppBar(
                   expandedHeight: 240,
                   pinned: true,
@@ -205,7 +312,6 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
                             ),
                           ),
                         ),
-
                         Positioned(
                           top: 14,
                           left: 14,
@@ -216,7 +322,6 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
                             ).popUntil((route) => route.isFirst),
                           ),
                         ),
-
                         Positioned(
                           left: 16,
                           right: 16,
@@ -224,10 +329,22 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // ✅ XP animé (count up + apparition)
+                              // ✅ Animation de l'XP avec statut de chargement
                               AnimatedBuilder(
                                 animation: _xpController,
                                 builder: (_, _) {
+                                  if (_isSavingXp) {
+                                    return const Opacity(
+                                      opacity: 0.8,
+                                      child: _Pill(
+                                        icon: Icons.hourglass_empty_rounded,
+                                        text: "Calcul de l'XP...",
+                                        tint: Colors.white,
+                                        subtle: true,
+                                      ),
+                                    );
+                                  }
+
                                   final scale = 0.92 + (0.08 * _xpAppear.value);
                                   final opacity = (0.2 + 0.8 * _xpAppear.value)
                                       .clamp(0.0, 1.0);
@@ -279,7 +396,6 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
-                      // ✅ Carte résumé
                       _SummaryCard(
                         title: routineName,
                         chips: [
@@ -308,12 +424,9 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 18),
-                      _SectionTitle("STATISTIQUES"),
+                      const _SectionTitle("STATISTIQUES"),
                       const SizedBox(height: 10),
-
-                      // ✅ Remplace les gros carrés par une carte compacte (lignes)
                       _StatsCompactCard(
                         rows: [
                           _StatRowModel(
@@ -342,10 +455,8 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 14),
-
-                      _GlassInfo(
+                      const _GlassInfo(
                         icon: Icons.insights_rounded,
                         text:
                             "Retrouve tes performances dans l’onglet Progrès.",
@@ -356,8 +467,6 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
               ],
             ),
           ),
-
-          // ✅ CTA bas (Apple Glass, plus fin, centré)
           Positioned(
             left: 0,
             right: 0,
@@ -656,7 +765,6 @@ class _Pill extends StatelessWidget {
   }
 }
 
-// ✅ Nouveau CTA : Apple Glass + pas full width
 class _BottomCtaGlass extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
