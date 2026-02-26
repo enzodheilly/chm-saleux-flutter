@@ -1,11 +1,14 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
-import '../services/auth_service.dart'; // ✅ N'oublie pas d'importer ton service
+import '../services/auth_service.dart';
 
+// --- COULEURS STYLE iOS DARK MODE ---
+const Color appBackground = Color(0xFF000000); // Noir profond
+const Color cardColor = Color(0xFF1C1C1E); // Gris très foncé
+const Color dividerColor = Color(0xFF2C2C2E);
+const Color textSecondary = Color(0xFF8E8E93);
 const Color clubOrange = Color(0xFFF57809);
-const Color darkBg = Color(0xFF0B0B0F);
-const Color cardSurface = Color(0xFF16161C);
 
 class WorkoutSummaryScreen extends StatefulWidget {
   final Map<String, dynamic> stats;
@@ -20,10 +23,9 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _xpController;
   late final Animation<double> _xpAppear;
-  late Animation<int>
-  _xpCount; // ✅ Plus en 'final' car on la met à jour dynamiquement
+  late Animation<int> _xpCount;
 
-  bool _isSavingXp = true; // ✅ Indique si on est en train de sauvegarder l'XP
+  bool _isSavingXp = true;
   bool _hasLeveledUp = false;
   int _newLevel = 1;
 
@@ -53,7 +55,6 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
   }
 
   int _calcXp(double totalVolume, int totalSets, int durationSec) {
-    // XP simple mais cohérent : volume + séries + durée
     final base = 50;
     final bonusVol = (totalVolume / 250).floor() * 10;
     final bonusSets = (totalSets / 10).floor() * 10;
@@ -63,7 +64,6 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
 
   String _getBannerImage(String routineName) {
     final name = routineName.toLowerCase().trim();
-
     if (name.contains("pec") || name.contains("chest")) {
       return "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=1200&q=80";
     }
@@ -88,7 +88,6 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
     if (name.contains("full") || name.contains("body")) {
       return "https://images.unsplash.com/photo-1517963879466-e9b5ce3825bf?w=1200&q=80";
     }
-
     return "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&q=80";
   }
 
@@ -104,34 +103,24 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
   @override
   void initState() {
     super.initState();
-
     _xpController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
     );
-
     _xpAppear = CurvedAnimation(
       parent: _xpController,
       curve: Curves.easeOutBack,
     );
-
-    // Initialisation vide en attendant la réponse du serveur
     _xpCount = IntTween(begin: 0, end: 0).animate(_xpController);
-
-    // ✅ On lance la sauvegarde de l'XP
     _processWorkoutAndXp();
   }
 
-  /// ✅ Méthode pour gérer la sauvegarde et l'animation de l'XP
   Future<void> _processWorkoutAndXp() async {
     final totalSeconds = _toInt(widget.stats['duration_seconds']);
     final totalVolume = _toDouble(widget.stats['total_volume']);
     final totalSets = _getTotalSets();
 
-    // 1. Calcul de l'XP gagné
     final gainedXp = _calcXp(totalVolume, totalSets, totalSeconds);
-
-    // 2. Sauvegarde en BDD
     final result = await AuthService().addXpToUser(gainedXp);
 
     if (!mounted) return;
@@ -142,8 +131,6 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
         _hasLeveledUp = result['has_leveled_up'] ?? false;
         _newLevel = result['new_level'] ?? 1;
       }
-
-      // 3. Mise à jour de l'animation avec la vraie valeur
       _xpCount = IntTween(begin: 0, end: gainedXp).animate(
         CurvedAnimation(parent: _xpController, curve: Curves.easeOutExpo),
       );
@@ -151,7 +138,6 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
 
     _xpController.forward();
 
-    // 4. Si level up, on affiche la modale après l'animation
     if (_hasLeveledUp) {
       Future.delayed(const Duration(milliseconds: 1200), () {
         if (mounted) _showLevelUpDialog(_newLevel);
@@ -159,27 +145,15 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
     }
   }
 
-  /// ✅ Modale stylisée pour célébrer le Level Up
   void _showLevelUpDialog(int level) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
+        backgroundColor: cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
           padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: cardSurface,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: clubOrange.withOpacity(0.3)),
-            boxShadow: [
-              BoxShadow(
-                color: clubOrange.withOpacity(0.15),
-                blurRadius: 40,
-                spreadRadius: 5,
-              ),
-            ],
-          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -201,9 +175,8 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  fontStyle: FontStyle.italic,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
                   letterSpacing: -0.5,
                 ),
               ),
@@ -211,10 +184,10 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
               Text(
                 "Félicitations, tes efforts paient ! Tu as atteint le niveau $level.",
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.7),
+                style: const TextStyle(
+                  color: textSecondary,
                   fontSize: 14,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w400,
                   height: 1.4,
                 ),
               ),
@@ -226,17 +199,15 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
                   style: ElevatedButton.styleFrom(
                     backgroundColor: clubOrange,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
                   child: const Text(
-                    "CONTINUER",
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.0,
-                    ),
+                    "Continuer",
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                   ),
                 ),
               ),
@@ -269,35 +240,36 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
         : _getBannerImage(routineName);
 
     return Scaffold(
-      backgroundColor: darkBg,
-      body: Stack(
+      backgroundColor: appBackground,
+      body: Column(
         children: [
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    const Color(0xFF0F0F13),
-                    Colors.black.withOpacity(0.95),
-                    Colors.black,
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          SafeArea(
+          Expanded(
             child: CustomScrollView(
               physics: const BouncingScrollPhysics(),
               slivers: [
+                // ===================
+                // HEADER BANNIÈRE
+                // ===================
                 SliverAppBar(
-                  expandedHeight: 240,
+                  expandedHeight: 260,
                   pinned: true,
-                  backgroundColor: darkBg,
+                  backgroundColor: appBackground,
                   automaticallyImplyLeading: false,
                   flexibleSpace: FlexibleSpaceBar(
+                    titlePadding: const EdgeInsets.only(
+                      left: 20,
+                      bottom: 16,
+                      right: 20,
+                    ),
+                    title: Text(
+                      routineName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 22,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
                     background: Stack(
                       fit: StackFit.expand,
                       children: [
@@ -305,7 +277,7 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
                           bannerUrl,
                           fit: BoxFit.cover,
                           errorBuilder: (_, _, _) =>
-                              Container(color: Colors.grey[900]),
+                              Container(color: cardColor),
                         ),
                         DecoratedBox(
                           decoration: BoxDecoration(
@@ -313,86 +285,34 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
                               colors: [
-                                Colors.black.withOpacity(0.10),
-                                Colors.black.withOpacity(0.45),
-                                Colors.black.withOpacity(0.95),
+                                Colors.transparent,
+                                appBackground.withOpacity(0.5),
+                                appBackground,
                               ],
+                              stops: const [0.5, 0.8, 1.0],
                             ),
                           ),
                         ),
+                        // Bouton Fermer (Croix style iOS)
                         Positioned(
-                          top: 14,
-                          left: 14,
-                          child: _GlassIconButton(
-                            icon: Icons.close,
+                          top: MediaQuery.of(context).padding.top + 10,
+                          right: 16,
+                          child: GestureDetector(
                             onTap: () => Navigator.of(
                               context,
                             ).popUntil((route) => route.isFirst),
-                          ),
-                        ),
-                        Positioned(
-                          left: 16,
-                          right: 16,
-                          bottom: 16,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // ✅ Animation de l'XP avec statut de chargement
-                              AnimatedBuilder(
-                                animation: _xpController,
-                                builder: (_, _) {
-                                  if (_isSavingXp) {
-                                    return const Opacity(
-                                      opacity: 0.8,
-                                      child: _Pill(
-                                        icon: Icons.hourglass_empty_rounded,
-                                        text: "Calcul de l'XP...",
-                                        tint: Colors.white,
-                                        subtle: true,
-                                      ),
-                                    );
-                                  }
-
-                                  final scale = 0.92 + (0.08 * _xpAppear.value);
-                                  final opacity = (0.2 + 0.8 * _xpAppear.value)
-                                      .clamp(0.0, 1.0);
-
-                                  return Opacity(
-                                    opacity: opacity,
-                                    child: Transform.scale(
-                                      scale: scale,
-                                      alignment: Alignment.centerLeft,
-                                      child: _Pill(
-                                        icon: Icons.stars_rounded,
-                                        text: "+ ${_xpCount.value} XP",
-                                        tint: clubOrange,
-                                      ),
-                                    ),
-                                  );
-                                },
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2C2C2E).withOpacity(0.8),
+                                shape: BoxShape.circle,
                               ),
-                              const SizedBox(height: 10),
-                              const Text(
-                                "SÉANCE TERMINÉE",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 26,
-                                  fontStyle: FontStyle.italic,
-                                  letterSpacing: -0.6,
-                                ),
+                              child: const Icon(
+                                Icons.close,
+                                color: Colors.white,
+                                size: 20,
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                "Bien joué. Tes stats ont été enregistrées.",
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.78),
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13,
-                                  height: 1.2,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
                       ],
@@ -400,74 +320,142 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
                   ),
                 ),
 
+                // ===================
+                // CONTENU
+                // ===================
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 40),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
-                      _SummaryCard(
-                        title: routineName,
-                        chips: [
-                          _Pill(
-                            icon: Icons.timer_outlined,
-                            text: duration,
-                            tint: Colors.white,
-                            subtle: true,
+                      // Bloc d'XP (Style Pro)
+                      AnimatedBuilder(
+                        animation: _xpController,
+                        builder: (_, _) {
+                          if (_isSavingXp) {
+                            return const Center(
+                              child: CircularProgressIndicator(
+                                color: clubOrange,
+                              ),
+                            );
+                          }
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 20,
+                              horizontal: 16,
+                            ),
+                            decoration: BoxDecoration(
+                              color: cardColor,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.stars_rounded,
+                                  color: clubOrange,
+                                  size: 28,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  "+ ${_xpCount.value} XP GAGNÉS",
+                                  style: const TextStyle(
+                                    color: clubOrange,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      // Section Statistiques
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4, bottom: 8),
+                        child: Text(
+                          "RÉSUMÉ DE LA SÉANCE",
+                          style: TextStyle(
+                            color: textSecondary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 0.5,
                           ),
-                          _Pill(
-                            icon: Icons.fitness_center_rounded,
-                            text: volumeLabel,
-                            tint: clubOrange,
+                        ),
+                      ),
+
+                      Container(
+                        decoration: BoxDecoration(
+                          color: cardColor,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          children: [
+                            _buildStatRow(
+                              icon: Icons.timer_outlined,
+                              label: "Durée",
+                              value: duration,
+                            ),
+                            const Divider(
+                              height: 1,
+                              color: dividerColor,
+                              indent: 48,
+                            ),
+                            _buildStatRow(
+                              icon: Icons.stacked_bar_chart_rounded,
+                              label: "Volume total",
+                              value: volumeLabel,
+                            ),
+                            const Divider(
+                              height: 1,
+                              color: dividerColor,
+                              indent: 48,
+                            ),
+                            _buildStatRow(
+                              icon: Icons.done_all_rounded,
+                              label: "Séries complétées",
+                              value: "$totalSets",
+                            ),
+                            const Divider(
+                              height: 1,
+                              color: dividerColor,
+                              indent: 48,
+                            ),
+                            _buildStatRow(
+                              icon: Icons.event_available_rounded,
+                              label: "Date",
+                              value: dateLabel,
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Message info
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            color: textSecondary,
+                            size: 18,
                           ),
-                          _Pill(
-                            icon: Icons.done_all_rounded,
-                            text: "$totalSets séries",
-                            tint: Colors.greenAccent,
-                            subtle: true,
-                          ),
-                          _Pill(
-                            icon: Icons.calendar_today_rounded,
-                            text: dateLabel,
-                            tint: Colors.purpleAccent,
-                            subtle: true,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              "Retrouve l'historique détaillé de tes performances dans l'onglet Progrès.",
+                              style: TextStyle(
+                                color: textSecondary,
+                                fontSize: 13,
+                                height: 1.4,
+                              ),
+                            ),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 18),
-                      const _SectionTitle("STATISTIQUES"),
-                      const SizedBox(height: 10),
-                      _StatsCompactCard(
-                        rows: [
-                          _StatRowModel(
-                            icon: Icons.timer_outlined,
-                            label: "Durée",
-                            value: duration,
-                            accent: clubOrange,
-                          ),
-                          _StatRowModel(
-                            icon: Icons.stacked_bar_chart_rounded,
-                            label: "Volume",
-                            value: volumeLabel,
-                            accent: Colors.blueAccent,
-                          ),
-                          _StatRowModel(
-                            icon: Icons.done_all_rounded,
-                            label: "Séries",
-                            value: "$totalSets",
-                            accent: Colors.greenAccent,
-                          ),
-                          _StatRowModel(
-                            icon: Icons.event_available_rounded,
-                            label: "Date",
-                            value: dateLabel,
-                            accent: Colors.purpleAccent,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      const _GlassInfo(
-                        icon: Icons.insights_rounded,
-                        text:
-                            "Retrouve tes performances dans l’onglet Progrès.",
                       ),
                     ]),
                   ),
@@ -475,371 +463,74 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
               ],
             ),
           ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: _BottomCtaGlass(
-              label: "RETOUR À L'ACCUEIL",
-              onTap: () =>
-                  Navigator.of(context).popUntil((route) => route.isFirst),
+
+          // ===================
+          // BOUTON FIXE EN BAS
+          // ===================
+          Container(
+            padding: EdgeInsets.fromLTRB(
+              16,
+              16,
+              16,
+              MediaQuery.of(context).padding.bottom + 16,
+            ),
+            decoration: const BoxDecoration(
+              color: appBackground,
+              border: Border(top: BorderSide(color: dividerColor)),
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () =>
+                    Navigator.of(context).popUntil((route) => route.isFirst),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: clubOrange,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text(
+                  "Retour à l'accueil",
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                ),
+              ),
             ),
           ),
         ],
       ),
     );
   }
-}
 
-// =====================
-// COMPONENTS
-// =====================
-
-class _GlassIconButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _GlassIconButton({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(999),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: InkWell(
-          onTap: onTap,
-          child: Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.08),
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withOpacity(0.12)),
-            ),
-            child: Icon(icon, color: Colors.white, size: 20),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  final String text;
-  const _SectionTitle(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: TextStyle(
-        color: Colors.white.withOpacity(0.55),
-        fontWeight: FontWeight.w900,
-        letterSpacing: 1.2,
-        fontSize: 11,
-      ),
-    );
-  }
-}
-
-class _SummaryCard extends StatelessWidget {
-  final String title;
-  final List<Widget> chips;
-
-  const _SummaryCard({required this.title, required this.chips});
-
-  @override
-  Widget build(BuildContext context) {
+  // --- COMPOSANT ROW ---
+  Widget _buildStatRow({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cardSurface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.35),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      height: 54,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
         children: [
+          Icon(icon, color: Colors.white, size: 22),
+          const SizedBox(width: 14),
           Text(
-            title.toUpperCase(),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+            label,
             style: const TextStyle(
               color: Colors.white,
-              fontWeight: FontWeight.w900,
-              fontSize: 18,
-              fontStyle: FontStyle.italic,
-              letterSpacing: -0.5,
+              fontSize: 16,
+              fontWeight: FontWeight.w400,
             ),
           ),
-          const SizedBox(height: 12),
-          Wrap(spacing: 10, runSpacing: 10, children: chips),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatRowModel {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color accent;
-
-  _StatRowModel({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.accent,
-  });
-}
-
-class _StatsCompactCard extends StatelessWidget {
-  final List<_StatRowModel> rows;
-
-  const _StatsCompactCard({required this.rows});
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(22),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: Colors.white.withOpacity(0.10)),
-          ),
-          child: Column(
-            children: List.generate(rows.length, (i) {
-              final r = rows[i];
-              return Column(
-                children: [
-                  _StatRow(r: r),
-                  if (i != rows.length - 1)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      child: Container(height: 1, color: Colors.white10),
-                    ),
-                ],
-              );
-            }),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _StatRow extends StatelessWidget {
-  final _StatRowModel r;
-  const _StatRow({required this.r});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: r.accent.withOpacity(0.14),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: r.accent.withOpacity(0.24)),
-          ),
-          child: Icon(r.icon, color: r.accent, size: 18),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            r.label.toUpperCase(),
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.45),
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.0,
-              fontSize: 10,
-            ),
-          ),
-        ),
-        Text(
-          r.value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w900,
-            fontSize: 14,
-            letterSpacing: -0.2,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _GlassInfo extends StatelessWidget {
-  final IconData icon;
-  final String text;
-
-  const _GlassInfo({required this.icon, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(22),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: Colors.white.withOpacity(0.10)),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, color: clubOrange, size: 18),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  text,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.70),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12.5,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Pill extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  final Color tint;
-  final bool subtle;
-
-  const _Pill({
-    required this.icon,
-    required this.text,
-    required this.tint,
-    this.subtle = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final bg = subtle ? Colors.white.withOpacity(0.06) : tint.withOpacity(0.16);
-    final border = subtle
-        ? Colors.white.withOpacity(0.10)
-        : tint.withOpacity(0.26);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: subtle ? Colors.white70 : tint),
-          const SizedBox(width: 7),
+          const Spacer(),
           Text(
-            text.toUpperCase(),
-            style: TextStyle(
-              color: Colors.white.withOpacity(subtle ? 0.82 : 1.0),
-              fontWeight: FontWeight.w900,
-              fontSize: 11,
-              letterSpacing: 0.6,
-            ),
+            value,
+            style: const TextStyle(color: textSecondary, fontSize: 16),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _BottomCtaGlass extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-
-  const _BottomCtaGlass({required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.35),
-            border: Border(
-              top: BorderSide(color: Colors.white.withOpacity(0.08)),
-            ),
-          ),
-          child: Center(
-            child: InkWell(
-              borderRadius: BorderRadius.circular(20),
-              onTap: onTap,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 22,
-                  vertical: 14,
-                ),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  color: clubOrange.withOpacity(0.18),
-                  border: Border.all(
-                    color: clubOrange.withOpacity(0.55),
-                    width: 1.2,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: clubOrange.withOpacity(0.18),
-                      blurRadius: 18,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.home_rounded,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.9,
-                        fontSize: 12.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

@@ -43,8 +43,7 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
   bool _isLoadingCatalog = true;
   List<dynamic> _catalogRoutines = [];
   final Set<int> _favoriteRoutineIds = <int>{};
-  final Set<String> _favoriteCategoryTitles =
-      <String>{}; // ✅ Favoris catégories
+  final Set<String> _favoriteCategoryTitles = <String>{};
 
   // =========================
   // MY ROUTINES DATA
@@ -270,7 +269,6 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
     return "Repousse tes limites avec ces entraînements ciblés spécialement pour toi.";
   }
 
-  // ✅ Utilisation de tes propres assets (Images locales)
   String _getImageForGroup(String groupName) {
     final name = groupName.toLowerCase().trim();
     if (name.contains("pec") ||
@@ -314,8 +312,6 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
         name.contains("haut")) {
       return "assets/images/fullbody.jpg";
     }
-
-    // Image par défaut si aucun mot-clé n'est trouvé
     return "assets/images/default.jpg";
   }
 
@@ -640,15 +636,6 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
       (_mapify(routine)['name'] ?? _mapify(routine)['title'] ?? 'Routine')
           .toString();
 
-  String _routineSubtitle(dynamic routine) {
-    final m = _mapify(routine);
-    final count = _toInt(m['exerciseCount']);
-    if (count != null) return "$count exercice${count > 1 ? 's' : ''}";
-    final group = m['muscleGroup']?.toString();
-    if (group != null && group.isNotEmpty) return group;
-    return "Routine complète";
-  }
-
   int? _routineId(dynamic routine) => _toInt(_mapify(routine)['id']);
 
   Future<void> _startRoutine(dynamic routine) async {
@@ -869,9 +856,7 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
               final title = cat['title'] as String;
               final keys = (cat['keys'] as List).cast<String>();
 
-              // ✅ On force l'image locale basée sur la catégorie
               final finalImgUrl = _getImageForGroup(title);
-
               final count = _countRoutinesForCategory(keys);
               final desc = _getCategoryDescription(title);
 
@@ -917,9 +902,7 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
               final title = cat['title'] as String;
               final keys = (cat['keys'] as List).cast<String>();
 
-              // ✅ On force l'image locale
               final finalImgUrl = _getImageForGroup(title);
-
               final count = _countRoutinesForCategory(keys);
               final desc = _getCategoryDescription(title);
 
@@ -1013,33 +996,63 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
           ),
           ...List.generate(routines.length, (index) {
             final routine = routines[index];
-            final id = _routineId(routine);
             final title = _routineTitle(routine);
-            final subtitle = _routineSubtitle(routine);
 
             final m = _mapify(routine);
             String categoryString = (m['muscleGroup'] ?? m['category'] ?? '')
                 .toString();
 
             if (categoryString.isEmpty || categoryString == 'null') {
-              categoryString = "$title $subtitle";
+              categoryString = title;
             }
 
             final categoryForIcon = categoryString;
-            // ✅ On force l'utilisation de l'asset local pour Mes Routines aussi
             final String imgUrl = _getImageForGroup(categoryString);
+
+            // =========================
+            // CALCULS (Stats Routine)
+            // =========================
+            int exCount = _toInt(m['exerciseCount']) ?? 0;
+            int tSets = 0;
+            int tDurationSec = 0;
+
+            final rawExercises = m['exercises'];
+            if (rawExercises is List) {
+              if (exCount == 0) exCount = rawExercises.length;
+
+              for (final raw in rawExercises) {
+                final exMap = _mapify(raw);
+                final sets = _toInt(exMap['sets']) ?? 1;
+                // Prends la donnée 'reps' (du draft) ou 'repsMax' (de l'API)
+                final reps =
+                    _toInt(exMap['reps']) ?? _toInt(exMap['repsMax']) ?? 10;
+                // Idem pour le temps de repos
+                final rest =
+                    _toInt(exMap['restSec']) ??
+                    _toInt(exMap['restSeconds']) ??
+                    60;
+
+                tSets += sets;
+                // Calcul = Temps sous tension (4s par rep) + Temps de repos
+                tDurationSec += sets * ((reps * 4) + rest);
+              }
+            }
+
+            int dMin = tDurationSec > 0 ? (tDurationSec ~/ 60) : 45;
+            if (tDurationSec > 0 && dMin == 0)
+              dMin = 1; // Minimum 1 min si l'entraînement est très court
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 16),
               child: _WorkoutCard(
                 title: title,
-                subtitle: subtitle,
+                exerciseCount: exCount,
+                totalSets: tSets,
+                durationMin: dMin,
                 imgUrl: imgUrl,
                 categoryForIcon: categoryForIcon,
                 accent: clubOrange,
                 isFullWidth: true,
-                isFavorite: id != null && _favoriteRoutineIds.contains(id),
-                onFavoriteTap: id != null ? () => _toggleFavorite(id) : null,
                 onTap: () => _startRoutine(routine),
                 onEdit: () => _editRoutine(routine),
                 onDuplicate: () => _duplicateRoutine(routine),
@@ -1179,10 +1192,6 @@ class _CustomTab extends StatelessWidget {
   }
 }
 
-// =====================
-// CARTE CATÉGORIE PREMIUM (SCROLL HORIZONTAL)
-// =====================
-
 class _CategoryHorizontalCard extends StatelessWidget {
   final String title;
   final String description;
@@ -1208,7 +1217,7 @@ class _CategoryHorizontalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color surfaceColor = Color(0xFF1C1C22); // Gris très sombre et profond
+    const Color surfaceColor = Color(0xFF1C1C22);
     const Color textPrimary = Color(0xFFFFFFFF);
     const Color textSecondary = Color(0xFFA0A5B1);
     const Color softBorder = Color(0xFF333333);
@@ -1241,7 +1250,6 @@ class _CategoryHorizontalCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ================= IMAGE TOP =================
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(20),
@@ -1252,7 +1260,6 @@ class _CategoryHorizontalCard extends StatelessWidget {
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        // ✅ Gestion Network ou Asset
                         imgUrl.startsWith('http')
                             ? Image.network(
                                 imgUrl,
@@ -1294,7 +1301,6 @@ class _CategoryHorizontalCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                        // Bouton Favoris style "Glass"
                         if (onFavoriteTap != null)
                           Positioned(
                             top: 10,
@@ -1325,15 +1331,12 @@ class _CategoryHorizontalCard extends StatelessWidget {
                     ),
                   ),
                 ),
-
-                // ================= CORPS DE LA CARTE =================
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Titre
                         Text(
                           title.toUpperCase(),
                           maxLines: 1,
@@ -1346,7 +1349,6 @@ class _CategoryHorizontalCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 6),
-                        // Description
                         Text(
                           description,
                           maxLines: 2,
@@ -1358,15 +1360,11 @@ class _CategoryHorizontalCard extends StatelessWidget {
                             height: 1.4,
                           ),
                         ),
-
                         const Spacer(),
-
                         Divider(
                           color: Colors.white.withOpacity(0.05),
                           height: 16,
                         ),
-
-                        // Infos et Bouton
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.center,
@@ -1413,8 +1411,6 @@ class _CategoryHorizontalCard extends StatelessWidget {
                                 ),
                               ],
                             ),
-
-                            // Bouton circulaire moderne
                             Container(
                               width: 38,
                               height: 38,
@@ -1456,13 +1452,13 @@ class _CategoryHorizontalCard extends StatelessWidget {
 
 class _WorkoutCard extends StatelessWidget {
   final String title;
-  final String subtitle;
+  final int exerciseCount;
+  final int totalSets;
+  final int durationMin;
   final String imgUrl;
   final String categoryForIcon;
   final Color accent;
   final VoidCallback? onTap;
-  final bool isFavorite;
-  final VoidCallback? onFavoriteTap;
   final bool isFullWidth;
   final VoidCallback? onEdit;
   final VoidCallback? onDuplicate;
@@ -1470,13 +1466,13 @@ class _WorkoutCard extends StatelessWidget {
 
   const _WorkoutCard({
     required this.title,
-    required this.subtitle,
+    required this.exerciseCount,
+    required this.totalSets,
+    required this.durationMin,
     required this.imgUrl,
     required this.categoryForIcon,
     required this.accent,
     this.onTap,
-    this.isFavorite = false,
-    this.onFavoriteTap,
     this.isFullWidth = false,
     this.onEdit,
     this.onDuplicate,
@@ -1555,7 +1551,6 @@ class _WorkoutCard extends StatelessWidget {
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        // ✅ Gestion Network ou Asset
                         imgUrl.startsWith('http')
                             ? Image.network(
                                 imgUrl,
@@ -1600,29 +1595,8 @@ class _WorkoutCard extends StatelessWidget {
                           right: 10,
                           child: Row(
                             children: [
-                              if (onFavoriteTap != null)
-                                GestureDetector(
-                                  onTap: onFavoriteTap,
-                                  child: Container(
-                                    width: 34,
-                                    height: 34,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.92),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Icon(
-                                      isFavorite
-                                          ? Icons.favorite_rounded
-                                          : Icons.favorite_border_rounded,
-                                      size: 18,
-                                      color: isFavorite
-                                          ? accent
-                                          : textSecondary,
-                                    ),
-                                  ),
-                                ),
+                              // ❌ ICI ON A ENLEVÉ L'ICONE FAVORIS
                               if (hasMenuOptions) ...[
-                                const SizedBox(width: 8),
                                 Container(
                                   width: 34,
                                   height: 34,
@@ -1694,18 +1668,74 @@ class _WorkoutCard extends StatelessWidget {
                           height: 1.15,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        subtitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: textSecondary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          height: 1.25,
-                        ),
+                      const SizedBox(height: 8),
+
+                      // ✅ NOUVELLE LIGNE AVEC STATISTIQUES
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.fitness_center_rounded,
+                                size: 13,
+                                color: textSecondary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                "$exerciseCount exos",
+                                style: const TextStyle(
+                                  color: textSecondary,
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.layers_rounded,
+                                size: 13,
+                                color: textSecondary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                "$totalSets séries",
+                                style: const TextStyle(
+                                  color: textSecondary,
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.timer_outlined,
+                                size: 13,
+                                color: textSecondary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                "~ $durationMin min",
+                                style: const TextStyle(
+                                  color: textSecondary,
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
+
                       const SizedBox(height: 16),
                       Row(
                         children: [
