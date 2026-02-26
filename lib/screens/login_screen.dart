@@ -12,8 +12,10 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   // Couleurs du design
   static const Color clubOrange = Color(0xFFF57809);
-  static const Color limeGreen = Color(0xFFF57809); // Le vert de la capture
   static const Color appBgColor = Color(0xFF06060B);
+
+  // Fond très transparent pour les champs (style CashPay)
+  static final Color inputBgColor = Colors.white.withOpacity(0.03);
 
   // Controllers et services
   final TextEditingController _emailController = TextEditingController();
@@ -26,10 +28,11 @@ class _LoginScreenState extends State<LoginScreen> {
   // États
   bool _isLoading = false;
   bool _isPasswordVisible = false;
-  bool _showLoginForm = false; // Permet de basculer entre l'accueil et le login
-  int _currentPage = 0; // Suit la slide actuelle
+  bool _showLoginForm = false;
+  int _currentPage = 0;
+  bool _rememberMe = false;
 
-  // 📝 Les données de tes 3 slides (Tu devras mettre ces 3 images dans tes assets)
+  // 📝 Les données de tes 3 slides
   final List<Map<String, String>> _onboardingSlides = [
     {
       "image": "assets/images/onboarding1.jpg",
@@ -59,7 +62,6 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // ... Méthodes de connexion (identiques) ...
   void _submit() async {
     FocusScope.of(context).unfocus();
 
@@ -140,7 +142,6 @@ class _LoginScreenState extends State<LoginScreen> {
     return Stack(
       key: const ValueKey('onboarding_view'),
       children: [
-        // 1. Le PageView pour faire défiler les images et textes
         PageView.builder(
           controller: _pageController,
           onPageChanged: (index) {
@@ -154,9 +155,7 @@ class _LoginScreenState extends State<LoginScreen> {
             return Stack(
               fit: StackFit.expand,
               children: [
-                // Image de fond
                 Image.asset(slide["image"]!, fit: BoxFit.cover),
-                // Dégradé pour rendre le texte lisible
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -172,15 +171,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                // Textes de la slide
                 SafeArea(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      24,
-                      0,
-                      24,
-                      180,
-                    ), // Espace en bas pour les boutons
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 180),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
@@ -215,25 +208,37 @@ class _LoginScreenState extends State<LoginScreen> {
           },
         ),
 
-        // Bouton "Passer" en haut à droite
         SafeArea(
           child: Align(
             alignment: Alignment.topRight,
-            child: TextButton(
-              onPressed: () => setState(() => _showLoginForm = true),
-              child: Text(
-                "Passer",
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.6),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 24.0, top: 12.0),
+              child: TextButton(
+                onPressed: () => setState(() => _showLoginForm = true),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  backgroundColor: Colors.black.withOpacity(0.15),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                child: Text(
+                  "Passer",
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    letterSpacing: 0.2,
+                  ),
                 ),
               ),
             ),
           ),
         ),
 
-        // 3. Contrôles statiques en bas (Points + Bouton + Mentions)
         Positioned(
           bottom: 0,
           left: 0,
@@ -244,7 +249,6 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Indicateur de pagination (les points)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(
@@ -252,10 +256,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       (index) => _buildDot(isActive: index == _currentPage),
                     ),
                   ),
-
                   const SizedBox(height: 32),
-
-                  // Bouton dynamique (Suivant -> Commencer)
                   Container(
                     width: double.infinity,
                     height: 58,
@@ -263,7 +264,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: limeGreen.withOpacity(0.25),
+                          color: clubOrange.withOpacity(0.25),
                           blurRadius: 20,
                           offset: const Offset(0, 4),
                         ),
@@ -272,12 +273,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: ElevatedButton(
                       onPressed: () {
                         if (_currentPage == _onboardingSlides.length - 1) {
-                          // Dernière slide : on affiche le formulaire de login
                           setState(() {
                             _showLoginForm = true;
                           });
                         } else {
-                          // Slides précédentes : on passe à l'image suivante
                           _pageController.nextPage(
                             duration: const Duration(milliseconds: 300),
                             curve: Curves.easeInOut,
@@ -285,8 +284,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         }
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: limeGreen,
-                        foregroundColor: Colors.black,
+                        backgroundColor: clubOrange,
+                        foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
@@ -305,8 +304,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-
-                  // Footer Mentions Légales
                   Text.rich(
                     TextSpan(
                       text: "En t'inscrivant, tu acceptes nos\n",
@@ -345,7 +342,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Widget dynamique pour les points
   Widget _buildDot({required bool isActive}) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
@@ -353,262 +349,372 @@ class _LoginScreenState extends State<LoginScreen> {
       width: isActive ? 24 : 8,
       height: 6,
       decoration: BoxDecoration(
-        color: isActive ? limeGreen : Colors.white.withOpacity(0.2),
+        color: isActive ? clubOrange : Colors.white.withOpacity(0.2),
         borderRadius: BorderRadius.circular(6),
       ),
     );
   }
 
   // ==========================================
-  // 🟠 ÉCRAN 2 : TON FORMULAIRE DE CONNEXION
+  // 🟠 ÉCRAN 2 : FORMULAIRE DE CONNEXION (Style CashPay Amélioré)
   // ==========================================
   Widget _buildLoginForm() {
-    return SafeArea(
+    return Stack(
       key: const ValueKey('login_form_view'),
-      child: Stack(
-        children: [
-          // Bouton Retour pour revenir au carrousel
-          Positioned(
-            top: 10,
-            left: 10,
-            child: IconButton(
-              icon: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: Colors.white,
+      children: [
+        // ✅ 1. EFFET DE LUEUR ORANGE EN HAUT (Glow style CashPay)
+        Positioned(
+          top: -200,
+          left: MediaQuery.of(context).size.width / 2 - 250,
+          child: Container(
+            width: 500,
+            height: 500,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  clubOrange.withOpacity(0.20), // Centre lumineux
+                  Colors.transparent, // Fondu vers le noir
+                ],
+                stops: const [0.1, 0.7],
               ),
-              onPressed: () {
-                setState(() {
-                  _showLoginForm = false;
-                });
-              },
             ),
           ),
+        ),
 
-          Center(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 10),
-
-                    Hero(
-                      tag: 'app_logo',
-                      child: Image.asset(
-                        'assets/images/logo.png',
-                        width: 110,
-                        height: 110,
-                        fit: BoxFit.contain,
-                      ),
+        // 2. Contenu principal
+        SafeArea(
+          child: Stack(
+            children: [
+              // Bouton Retour
+              Positioned(
+                top: 16,
+                left: 20,
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _showLoginForm = false;
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: clubOrange.withOpacity(0.15),
+                      shape: BoxShape.circle,
                     ),
+                    child: const Icon(
+                      Icons.arrow_back,
+                      color: clubOrange,
+                      size: 22,
+                    ),
+                  ),
+                ),
+              ),
 
-                    const SizedBox(height: 18),
-
-                    Stack(
-                      alignment: Alignment.center,
+              Center(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 20,
+                  ),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          "𝗖𝗛𝗠 𝗦𝗔𝗟𝗘𝗨𝗫",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 36,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 3.2,
-                            foreground: Paint()
-                              ..style = PaintingStyle.stroke
-                              ..strokeWidth = 2.2
-                              ..color = clubOrange.withOpacity(0.38),
-                          ),
-                        ),
-                        Text(
-                          "𝗖𝗛𝗠 𝗦𝗔𝗟𝗘𝗨𝗫",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 36,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 3.2,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black.withOpacity(0.60),
-                                blurRadius: 14,
-                                offset: const Offset(0, 6),
+                        const SizedBox(height: 60),
+
+                        // Logo & Titre
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Hero(
+                              tag: 'app_logo',
+                              child: Image.asset(
+                                'assets/images/logo.png',
+                                width: 32,
+                                height: 32,
+                                fit: BoxFit.contain,
                               ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 6),
-
-                    Text(
-                      "HALTÉROPHILIE & MUSCULATION",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.55),
-                        letterSpacing: 1.1,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                      ),
-                    ),
-
-                    const SizedBox(height: 36),
-
-                    _buildTextField(
-                      controller: _emailController,
-                      label: 'Email',
-                      icon: Icons.email_outlined,
-                      type: TextInputType.emailAddress,
-                    ),
-                    const SizedBox(height: 16),
-
-                    _buildTextField(
-                      controller: _passwordController,
-                      label: 'Mot de passe',
-                      icon: Icons.lock_outline,
-                      isPassword: true,
-                      onSubmitted: (_) => _isLoading ? null : _submit(),
-                    ),
-
-                    const SizedBox(height: 6),
-
-                    Center(
-                      child: TextButton(
-                        onPressed: () {
-                          _showSnackBar("Bientôt disponible 🔥", clubOrange);
-                        },
-                        style: TextButton.styleFrom(
-                          foregroundColor: clubOrange.withOpacity(0.9),
-                        ),
-                        child: const Text(
-                          "Mot de passe oublié ?",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    SizedBox(
-                      height: 54,
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _submit,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: clubOrange,
-                          foregroundColor: Colors.white,
-                          elevation: 8,
-                          shadowColor: clubOrange.withOpacity(0.35),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.6,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Text(
-                                'SE CONNECTER',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.6,
-                                ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Text(
+                              "CHM SALEUX",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 26,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.2,
                               ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Divider(color: Colors.white.withOpacity(0.12)),
+                            ),
+                          ],
                         ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
+
+                        const SizedBox(height: 32),
+
+                        // Titres de connexion
+                        const Center(
                           child: Text(
-                            "OU",
+                            "Connectez-vous à votre compte",
+                            textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.40),
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1.2,
-                              fontSize: 12,
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
                         ),
-                        Expanded(
-                          child: Divider(color: Colors.white.withOpacity(0.12)),
+                        const SizedBox(height: 8),
+                        Center(
+                          child: Text(
+                            "Bon retour ! Sélectionnez une méthode de connexion",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.5),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 40),
+
+                        // Champs de texte avec le nouveau style transparent / moins arrondi
+                        _buildTextField(
+                          controller: _emailController,
+                          hint: 'Votre Email',
+                          icon: Icons.mail_outline_rounded,
+                          type: TextInputType.emailAddress,
+                        ),
+                        const SizedBox(height: 16),
+
+                        _buildTextField(
+                          controller: _passwordController,
+                          hint: 'Votre Mot de passe',
+                          icon: Icons.lock_outline_rounded,
+                          isPassword: true,
+                          onSubmitted: (_) => _isLoading ? null : _submit(),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // Ligne "Se souvenir de moi" / "Mot de passe oublié"
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            GestureDetector(
+                              onTap: () =>
+                                  setState(() => _rememberMe = !_rememberMe),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 20,
+                                    height: 20,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: _rememberMe
+                                            ? clubOrange
+                                            : Colors.white.withOpacity(0.3),
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: _rememberMe
+                                        ? Center(
+                                            child: Container(
+                                              width: 10,
+                                              height: 10,
+                                              decoration: const BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: clubOrange,
+                                              ),
+                                            ),
+                                          )
+                                        : null,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    "Se souvenir de moi",
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.7),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                _showSnackBar(
+                                  "Bientôt disponible 🔥",
+                                  clubOrange,
+                                );
+                              },
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                minimumSize: const Size(0, 0),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: const Text(
+                                "Mot de passe oublié ?",
+                                style: TextStyle(
+                                  color: clubOrange,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        // Grand bouton de connexion
+                        SizedBox(
+                          height: 56,
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _isLoading ? null : _submit,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: clubOrange,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.6,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text(
+                                    'SE CONNECTER',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        // Séparateur
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Divider(
+                                color: Colors.white.withOpacity(0.1),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: Text(
+                                "Ou continuer avec",
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.4),
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Divider(
+                                color: Colors.white.withOpacity(0.1),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Boutons sociaux
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildSocialButton(
+                                // ✅ 2. VRAI LOGO GOOGLE (Multicouleur via réseau pour marcher immédiatement)
+                                // Si tu veux utiliser une image locale plus tard : Image.asset('assets/images/google.png', width: 18)
+                                iconWidget: Image.network(
+                                  'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/480px-Google_%22G%22_logo.svg.png',
+                                  width: 18,
+                                  height: 18,
+                                ),
+                                label: "Google",
+                                onPressed: _isLoading ? null : _loginWithGoogle,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _buildSocialButton(
+                                iconWidget: const FaIcon(
+                                  FontAwesomeIcons.apple,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                                label: "Apple",
+                                onPressed: () {
+                                  _showSnackBar(
+                                    "Apple Login - Bientôt",
+                                    clubOrange,
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 40),
+
+                        // Lien d'inscription
+                        Center(
+                          child: Text.rich(
+                            TextSpan(
+                              text: "Pas encore de compte ? ",
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.6),
+                                fontSize: 14,
+                              ),
+                              children: [
+                                TextSpan(
+                                  text: "S'inscrire",
+                                  style: const TextStyle(
+                                    color: clubOrange,
+                                    fontWeight: FontWeight.w700,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ],
                     ),
-
-                    const SizedBox(height: 18),
-
-                    SizedBox(
-                      height: 54,
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: _isLoading ? null : _loginWithGoogle,
-                        icon: const FaIcon(
-                          FontAwesomeIcons.google,
-                          color: Colors.redAccent,
-                          size: 18,
-                        ),
-                        label: const Text(
-                          "Continuer avec Google",
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          disabledBackgroundColor: Colors.white.withOpacity(
-                            0.55,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 18),
-
-                    Text(
-                      "© ${DateTime.now().year} CHM Saleux • Tous droits réservés",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.28),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
+  // ✅ 3. CHAMPS PLUS TRANSPARENTS ET MOINS ARRONDIS
   Widget _buildTextField({
     required TextEditingController controller,
-    required String label,
+    required String hint,
     required IconData icon,
     bool isPassword = false,
     TextInputType type = TextInputType.text,
@@ -620,38 +726,84 @@ class _LoginScreenState extends State<LoginScreen> {
       keyboardType: type,
       textInputAction: isPassword ? TextInputAction.done : TextInputAction.next,
       onSubmitted: onSubmitted,
-      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+      style: const TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.w600,
+        fontSize: 15,
+      ),
       cursorColor: clubOrange,
       decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(
-          color: Colors.white.withOpacity(0.45),
-          fontWeight: FontWeight.w700,
+        hintText: hint,
+        hintStyle: TextStyle(
+          color: Colors.white.withOpacity(0.3),
+          fontWeight: FontWeight.w500,
+          fontSize: 15,
         ),
-        prefixIcon: Icon(icon, color: clubOrange.withOpacity(0.95)),
+        prefixIcon: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Icon(icon, color: Colors.white.withOpacity(0.5), size: 22),
+        ),
+        prefixIconConstraints: const BoxConstraints(minWidth: 40),
         suffixIcon: isPassword
             ? IconButton(
                 icon: Icon(
-                  _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                  color: Colors.white.withOpacity(0.45),
+                  _isPasswordVisible
+                      ? Icons.visibility_off_outlined
+                      : Icons.remove_red_eye_outlined,
+                  color: Colors.white.withOpacity(0.4),
+                  size: 20,
                 ),
                 onPressed: () =>
                     setState(() => _isPasswordVisible = !_isPasswordVisible),
               )
             : null,
         filled: true,
-        fillColor: Colors.white.withOpacity(0.06),
+        fillColor: inputBgColor, // Plus transparent
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 16,
+          horizontal: 20,
+          vertical: 18,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.10)),
+          borderRadius: BorderRadius.circular(
+            12,
+          ), // Moins arrondi (12 au lieu de 20)
+          borderSide: BorderSide(
+            color: Colors.white.withOpacity(0.08),
+            width: 1,
+          ), // Bordure super discrète
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: clubOrange, width: 1.4),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: clubOrange, width: 1.2),
+        ),
+      ),
+    );
+  }
+
+  // Boutons sociaux mis à jour pour matcher avec les champs de texte
+  Widget _buildSocialButton({
+    required Widget iconWidget,
+    required String label,
+    required VoidCallback? onPressed,
+  }) {
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: iconWidget,
+      label: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: inputBgColor, // Même fond transparent que les inputs
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12), // Même arrondi de 12
+          side: BorderSide(color: Colors.white.withOpacity(0.08), width: 1),
         ),
       ),
     );

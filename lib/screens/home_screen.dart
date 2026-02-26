@@ -17,9 +17,9 @@ import 'profile_screen.dart';
 import 'program_config_screen.dart';
 
 const Color clubOrange = Color(0xFFF57809);
-const Color appBackground = Color(0xFF000000);
+const Color appBackground = Color(0xFF000000); // Retour au noir absolu
 const Color navBarColor = Color(0xFF000000);
-const Color surfaceColor = Color(0xFF222222);
+const Color surfaceColor = Color(0xFF1E1E1E); // Couleur des cartes inaltérée
 const Color textPrimary = Color(0xFFFFFFFF);
 const Color textSecondary = Color(0xFFA0A5B1);
 const Color softBorder = Color(0xFF333333);
@@ -34,8 +34,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
-  // Valeur par défaut si non connecté ou en chargement
-  String currentUserName = "Mike Ryan";
+  String currentUserName = "Chargement...";
   String? profileImageUrl;
 
   List<dynamic> allPrograms = [];
@@ -73,10 +72,6 @@ class _HomeScreenState extends State<HomeScreen> {
         profile = prof;
 
         if (prof != null) {
-          // Astuce pour voir exactement ce que ton backend renvoie dans la console :
-          debugPrint("Profil reçu : $prof");
-
-          // 1. Récupération avec vérification de plusieurs clés possibles
           final rawFirstName =
               (prof['firstName'] ?? prof['firstname'] ?? prof['prenom'] ?? "")
                   .toString()
@@ -90,7 +85,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   .toString()
                   .trim();
 
-          // 2. Fonction pour mettre la première lettre en majuscule et le reste en minuscule (ex: "ENZO" -> "Enzo")
           String capitalize(String s) {
             if (s.isEmpty) return "";
             return s[0].toUpperCase() + s.substring(1).toLowerCase();
@@ -103,6 +97,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
           if (fullName.isNotEmpty) {
             currentUserName = fullName;
+          } else {
+            currentUserName = "Athlète";
           }
 
           profileImageUrl = prof['profileImageUrl'] ?? prof['avatar'];
@@ -134,20 +130,19 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ✅ Message de bienvenue dynamique en FRANÇAIS
   String _getGreeting() {
     final hour = DateTime.now().hour;
     if (hour < 12) {
-      return "Bonjour.";
+      return "Bonjour,";
     } else if (hour < 17) {
-      return "Bon après-midi.";
+      return "Bon après-midi,";
     } else {
-      return "Bonsoir.";
+      return "Bonsoir,";
     }
   }
 
   // =========================================================
-  // ✅ HELPERS URL IMAGES BACKEND (Seulement pour Profil & News)
+  // ✅ HELPERS URL IMAGES BACKEND
   // =========================================================
 
   String? _resolveBackendImageUrl(dynamic rawValue) {
@@ -187,117 +182,25 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // =========================================================
-  // ✅ HELPERS (Images & Textes) POUR LES ROUTINES
+  // ✅ HELPERS ROUTINES
   // =========================================================
-
-  String _getCategoryDescription(String title) {
-    final t = title.toLowerCase();
-    if (t.contains("pec") || t.contains("push")) {
-      return "Travaille ta force de poussée et sculpte un torse puissant.";
-    }
-    if (t.contains("dos") || t.contains("pull")) {
-      return "Construis un dos large et épais grâce à ces tirages ciblés.";
-    }
-    if (t.contains("jambe") || t.contains("bas")) {
-      return "Le fondement de ta force. Des quadriceps aux mollets.";
-    }
-    if (t.contains("bras") || t.contains("biceps") || t.contains("triceps")) {
-      return "Isole tes muscles pour des bras massifs et dessinés.";
-    }
-    if (t.contains("epaule") || t.contains("épaule")) {
-      return "Développe des épaules larges et fortes en 3D.";
-    }
-    if (t.contains("cardio") || t.contains("run")) {
-      return "Améliore ton endurance et brûle un maximum de calories.";
-    }
-    if (t.contains("mobil")) {
-      return "Gagne en souplesse, récupère mieux et préviens les blessures.";
-    }
-    if (t.contains("perte") || t.contains("poids")) {
-      return "Des circuits haute intensité pour fondre efficacement.";
-    }
-    if (t.contains("full") || t.contains("body")) {
-      return "Sollicite tout ton corps pour un développement harmonieux.";
-    }
-    return "Repousse tes limites avec ces entraînements ciblés spécialement pour toi.";
-  }
 
   String _getImageForGroup(String groupName) {
     final name = groupName.toLowerCase().trim();
-    if (name.contains("pec") ||
-        name.contains("chest") ||
-        name.contains("push")) {
+    if (name.contains("pec") || name.contains("push"))
       return "assets/images/pecs.jpg";
-    }
-    if (name.contains("dos") ||
-        name.contains("back") ||
-        name.contains("pull")) {
+    if (name.contains("dos") || name.contains("pull"))
       return "assets/images/dos.jpg";
-    }
-    if (name.contains("jambe") ||
-        name.contains("leg") ||
-        name.contains("bas")) {
+    if (name.contains("jambe") || name.contains("leg"))
       return "assets/images/jambes.jpg";
-    }
-    if (name.contains("bras") ||
-        name.contains("arm") ||
-        name.contains("biceps") ||
-        name.contains("triceps")) {
+    if (name.contains("bras") || name.contains("biceps"))
       return "assets/images/bras.jpg";
-    }
-    if (name.contains("epaule") || name.contains("épaule")) {
-      return "assets/images/epaules.jpg";
-    }
-    if (name.contains("abdo") || name.contains("abs")) {
+    if (name.contains("epaule")) return "assets/images/epaules.jpg";
+    if (name.contains("abdo") || name.contains("abs"))
       return "assets/images/abdos.jpg";
-    }
-    if (name.contains("cardio") || name.contains("run")) {
+    if (name.contains("cardio") || name.contains("run"))
       return "assets/images/cardio.jpg";
-    }
-    if (name.contains("mobil")) {
-      return "assets/images/mobilite.jpg";
-    }
-    if (name.contains("perte") || name.contains("poids")) {
-      return "assets/images/perte_poids.jpg";
-    }
-    if (name.contains("full") ||
-        name.contains("body") ||
-        name.contains("haut")) {
-      return "assets/images/fullbody.jpg";
-    }
     return "assets/images/default.jpg";
-  }
-
-  IconData _getIconForCategory(String category) {
-    final c = category.toLowerCase();
-    if (c.contains('pec') || c.contains('push')) return Icons.fitness_center;
-    if (c.contains('dos') || c.contains('back') || c.contains('pull')) {
-      return Icons.accessibility_new_rounded;
-    }
-    if (c.contains('jambe') || c.contains('leg')) {
-      return Icons.directions_run_rounded;
-    }
-    if (c.contains('bras') || c.contains('arm')) {
-      return Icons.sports_gymnastics_rounded;
-    }
-    if (c.contains('triceps') || c.contains('avant')) {
-      return Icons.sports_gymnastics_rounded;
-    }
-    if (c.contains('epaule') || c.contains('épaule')) {
-      return Icons.accessibility_rounded;
-    }
-    if (c.contains('abdo')) return Icons.sports_martial_arts_rounded;
-    if (c.contains('cardio') || c.contains('run')) {
-      return Icons.monitor_heart_rounded;
-    }
-    if (c.contains('mobil')) return Icons.self_improvement_rounded;
-    if (c.contains('perte') || c.contains('poids')) {
-      return Icons.monitor_weight_rounded;
-    }
-    if (c.contains('full') || c.contains('body')) {
-      return Icons.accessibility_new_rounded;
-    }
-    return Icons.fitness_center_rounded;
   }
 
   List<Map<String, dynamic>> _buildForYouPrograms() {
@@ -316,26 +219,15 @@ class _HomeScreenState extends State<HomeScreen> {
     return takeGroups.map((g) {
       final variations = grouped[g]!;
       final rep = variations.first;
-
       final duration = rep['estimatedDurationMin'] ?? 60;
-      final level = (rep['level'] ?? "intermediaire").toString();
-      final labelLevel = level == "debutant"
-          ? "Débutant"
-          : (level == "avance" ? "Avancé" : "Intermédiaire");
-
-      final routineImageUrl = _getImageForGroup(g);
-      final desc = _getCategoryDescription(g);
 
       return {
         "title": g,
-        "subtitle": labelLevel,
-        "description": desc,
         "variationsCount": variations.length,
-        "averageTime": "$duration min",
-        "imgUrl": routineImageUrl,
-        "categoryForIcon": g,
+        "averageTime": "$duration Min",
+        "rating": "4.8", // Fake rating pour matcher le design
+        "imgUrl": _getImageForGroup(g),
         "routineId": rep['id'],
-        "routineName": rep['name'] ?? g,
         "variations": variations,
       };
     }).toList();
@@ -344,18 +236,16 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: appBackground,
+      backgroundColor: appBackground, // ✅ Retour du fond noir complet
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
             Container(
-              color: navBarColor,
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
-              child: _TopBar(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
+              child: _NewTopBar(
                 userName: currentUserName,
                 greeting: _getGreeting(),
-                notifCount: 2,
                 userImage: profileImageUrl,
                 onProfileTap: () async {
                   await Navigator.push(
@@ -364,7 +254,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                   _fetchCoreData();
                 },
-                onNotifTap: () {},
               ),
             ),
             Expanded(
@@ -373,25 +262,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   IndexedStack(
                     index: _selectedIndex,
                     children: [
-                      _buildHomeContent(),
+                      _buildUnifiedHomeFeed(),
                       const CreateRoutineScreen(),
                       const ProgressScreen(),
                       const Center(
                         child: Text(
-                          "PAGE HALTÉROPHILIE",
-                          style: TextStyle(
-                            color: textPrimary,
-                            fontWeight: FontWeight.w800,
-                          ),
+                          "HALTÉROPHILIE",
+                          style: TextStyle(color: textPrimary),
                         ),
                       ),
                       const Center(
                         child: Text(
-                          "PAGE ABONNEMENT",
-                          style: TextStyle(
-                            color: textPrimary,
-                            fontWeight: FontWeight.w800,
-                          ),
+                          "ABONNEMENT",
+                          style: TextStyle(color: textPrimary),
                         ),
                       ),
                     ],
@@ -399,7 +282,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   Consumer<WorkoutManager>(
                     builder: (context, manager, child) {
                       if (!manager.isActive) return const SizedBox.shrink();
-
                       return const Positioned(
                         left: 16,
                         right: 16,
@@ -409,9 +291,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
                   Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
+                    left: 20,
+                    right: 20,
+                    bottom: 24 + MediaQuery.of(context).padding.bottom,
                     child: _GlassBottomNav(
                       currentIndex: _selectedIndex,
                       onTap: (i) => setState(() => _selectedIndex = i),
@@ -426,81 +308,51 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHomeContent() {
-    return DefaultTabController(
-      length: 2,
-      child: NestedScrollView(
-        physics: const BouncingScrollPhysics(),
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Container(
-                decoration: const BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(color: softBorder, width: 1),
-                  ),
-                ),
-                child: const TabBar(
-                  indicatorColor: clubOrange,
-                  indicatorWeight: 3,
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  labelColor: textPrimary,
-                  unselectedLabelColor: textSecondary,
-                  labelStyle: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                    letterSpacing: 0.1,
-                  ),
-                  unselectedLabelStyle: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    letterSpacing: 0.1,
-                  ),
-                  tabs: [
-                    Tab(text: "Toi"),
-                    Tab(text: "Actualités"),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SliverToBoxAdapter(child: SizedBox(height: 14)),
-        ],
-        body: TabBarView(children: [_buildUserTab(), _buildNewsTab()]),
-      ),
-    );
-  }
-
-  Widget _buildUserTab() {
+  // ==========================================
+  // 🟢 FLUX UNIQUE COMPLET
+  // ==========================================
+  Widget _buildUnifiedHomeFeed() {
     final forYou = _buildForYouPrograms();
 
     return ListView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.only(bottom: 140),
+      padding: const EdgeInsets.fromLTRB(0, 10, 0, 140),
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: _WelcomeCard(name: currentUserName),
-        ),
-        const SizedBox(height: 18),
+        // 1. CALENDRIER SEMAINE
         const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0),
-          child: _FavoritesSummaryCard(),
+          padding: EdgeInsets.symmetric(horizontal: 20.0),
+          child: _WeekCalendar(),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 28),
+
+        // 2. ACTIVITÉ DU JOUR (Graphique Compact)
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: _SectionTitle(
-            title: "Entraînements pour toi",
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+          child: _SectionHeader(
+            title: "Activité du jour",
             actionText: "Voir tout",
-            actionColor: clubOrange,
-            onAction: () => setState(() => _selectedIndex = 1),
+            onAction: () {},
           ),
         ),
         const SizedBox(height: 12),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20.0),
+          child: _ActivityBarChart(),
+        ),
+        const SizedBox(height: 32),
+
+        // 3. PROGRAMMES POPULAIRES (Horizontal Compact)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+          child: _SectionHeader(
+            title: "Programmes Populaires",
+            actionText: "Voir tout",
+            onAction: () => setState(() => _selectedIndex = 1),
+          ),
+        ),
+        const SizedBox(height: 16),
         SizedBox(
-          height: 280,
+          height: 145, // Hauteur compacte
           child: isLoading
               ? const Center(
                   child: CircularProgressIndicator(color: clubOrange),
@@ -508,28 +360,24 @@ class _HomeScreenState extends State<HomeScreen> {
               : (forYou.isEmpty
                     ? const Center(
                         child: Text(
-                          "Aucun programme disponible",
+                          "Aucun programme",
                           style: TextStyle(color: textSecondary),
                         ),
                       )
                     : ListView.builder(
                         scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.only(left: 16, right: 0),
+                        padding: const EdgeInsets.only(left: 20, right: 4),
                         physics: const BouncingScrollPhysics(),
                         itemCount: forYou.length,
                         itemBuilder: (context, i) {
                           final item = forYou[i];
                           final routineId = item["routineId"] as int;
 
-                          return _PremiumWorkoutCard(
+                          return _PopularMethodCard(
                             title: item["title"].toString(),
-                            description: item["description"].toString(),
                             variationsCount: item["variationsCount"] as int,
-                            averageTime: item["averageTime"].toString(),
+                            rating: item["rating"].toString(),
                             imgUrl: item["imgUrl"].toString(),
-                            fallbackIcon: _getIconForCategory(
-                              item["categoryForIcon"].toString(),
-                            ),
                             isFavorite: _favoriteRoutineIds.contains(routineId),
                             onFavoriteTap: () => _toggleFavorite(routineId),
                             onTap: () {
@@ -548,64 +396,70 @@ class _HomeScreenState extends State<HomeScreen> {
                         },
                       )),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 32),
 
+        // 4. ACTUALITÉS (Vertical list style recommandation)
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: _SectionTitle(
-            title: "Conseil Nutritionnel",
-            actionColor: textSecondary,
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+          child: _SectionHeader(
+            title: "Actualités du Club",
+            actionText: "Voir tout",
             onAction: () {},
           ),
         ),
-        const SizedBox(height: 10),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0),
-          child: _NutritionCard(),
-        ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 16),
+        _buildNewsVerticalList(),
       ],
     );
   }
 
-  Widget _buildNewsTab() {
+  Widget _buildNewsVerticalList() {
     if (isNewsLoading) {
-      return const Center(child: CircularProgressIndicator(color: clubOrange));
+      return const Padding(
+        padding: EdgeInsets.all(24.0),
+        child: Center(child: CircularProgressIndicator(color: clubOrange)),
+      );
     }
-
     if (siteNews.isEmpty) {
-      return const Center(
-        child: Text(
-          "Aucune actualité pour le moment.",
-          style: TextStyle(color: textSecondary),
+      return const Padding(
+        padding: EdgeInsets.all(24.0),
+        child: Center(
+          child: Text(
+            "Aucune actualité.",
+            style: TextStyle(color: textSecondary),
+          ),
         ),
       );
     }
 
     return ListView.builder(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 20.0),
       itemCount: siteNews.length,
       itemBuilder: (context, index) {
         final article = siteNews[index] as Map<String, dynamic>;
-
         final imageUrl = _buildArticleImageUrl(article['photo']);
         final title = (article['title'] ?? "Titre indisponible").toString();
-        final subtitle =
-            (article['subtitle'] ??
-                    article['excerpt'] ??
-                    "Cliquez pour lire...")
-                .toString();
-        final publishedAt = article['publishedAt']?.toString();
+        final publishedAt = article['publishedAt']?.toString() ?? "";
+
+        // Formater la date
+        String dateLabel = "Récemment";
+        if (publishedAt.isNotEmpty) {
+          try {
+            final dt = DateTime.parse(publishedAt).toLocal();
+            dateLabel =
+                "${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}";
+          } catch (_) {}
+        }
 
         return Padding(
-          padding: const EdgeInsets.only(bottom: 14),
-          child: _NewsCard(
-            accent: clubOrange,
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _RecommendationCard(
             title: title,
-            subtitle: subtitle,
-            imageUrl: imageUrl,
-            publishedAt: publishedAt,
+            date: dateLabel,
+            imgUrl: imageUrl,
+            tag: "News",
             onTap: () {},
           ),
         );
@@ -614,9 +468,617 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// =====================
-// ✅ BARRE DE NAVIGATION (Refaite mode App Native)
-// =====================
+// ==========================================
+// 🔥 WIDGETS POUR REPRODUIRE LA MAQUETTE
+// ==========================================
+
+// 1. TOP BAR
+class _NewTopBar extends StatelessWidget {
+  final String userName;
+  final String greeting;
+  final String? userImage;
+  final VoidCallback onProfileTap;
+
+  const _NewTopBar({
+    required this.userName,
+    required this.greeting,
+    this.userImage,
+    required this.onProfileTap,
+  });
+
+  ImageProvider? _resolveImage(String? url) {
+    if (url == null || url.isEmpty) return null;
+    if (url.startsWith('http'))
+      return NetworkImage(
+        url
+            .replaceFirst('127.0.0.1', '10.0.2.2')
+            .replaceFirst('localhost', '10.0.2.2'),
+      );
+    if (url.contains(','))
+      return MemoryImage(base64Decode(url.split(',').last));
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final image = _resolveImage(userImage);
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: onProfileTap,
+          child: CircleAvatar(
+            radius: 22,
+            backgroundColor: surfaceColor,
+            backgroundImage: image,
+            child: image == null
+                ? const Icon(Icons.person, color: Colors.white)
+                : null,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                greeting,
+                style: const TextStyle(
+                  color: textSecondary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                userName,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+        _TopBarIconButton(
+          icon: Icons.notifications_none_rounded,
+          hasBadge: true,
+          onTap: () {},
+        ),
+        const SizedBox(width: 10),
+        _TopBarIconButton(
+          icon: Icons.calendar_today_rounded,
+          hasBadge: false,
+          onTap: () {},
+        ),
+      ],
+    );
+  }
+}
+
+class _TopBarIconButton extends StatelessWidget {
+  final IconData icon;
+  final bool hasBadge;
+  final VoidCallback onTap;
+
+  const _TopBarIconButton({
+    required this.icon,
+    required this.hasBadge,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Stack(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: const BoxDecoration(
+              color: surfaceColor,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: Colors.white, size: 20),
+          ),
+          if (hasBadge)
+            Positioned(
+              top: 0,
+              right: 2,
+              child: Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF4B4B),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: appBackground,
+                    width: 2,
+                  ), // Bordure raccord avec le fond noir
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// 2. EN-TÊTE DE SECTION
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final String actionText;
+  final VoidCallback onAction;
+
+  const _SectionHeader({
+    required this.title,
+    required this.actionText,
+    required this.onAction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        GestureDetector(
+          onTap: onAction,
+          child: Text(
+            actionText,
+            style: const TextStyle(
+              color: textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// 3. CALENDRIER DE LA SEMAINE
+class _WeekCalendar extends StatelessWidget {
+  const _WeekCalendar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: const [
+          _DayIcon(day: "Lun", date: "12", isCompleted: true),
+          _DayIcon(day: "Mar", date: "13", isCompleted: false),
+          _DayIcon(day: "Mer", date: "14", isCompleted: true),
+          _DayIcon(day: "Jeu", date: "15", isCompleted: true),
+          _DayIcon(day: "Ven", date: "16", isToday: true),
+          _DayIcon(day: "Sam", date: "17", isCompleted: false),
+          _DayIcon(day: "Dim", date: "18", isCompleted: false),
+        ],
+      ),
+    );
+  }
+}
+
+class _DayIcon extends StatelessWidget {
+  final String day;
+  final String date;
+  final bool isCompleted;
+  final bool isToday;
+
+  const _DayIcon({
+    required this.day,
+    required this.date,
+    this.isCompleted = false,
+    this.isToday = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          day,
+          style: TextStyle(
+            color: isToday ? clubOrange : textSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          width: 36, // Compact
+          height: 36, // Compact
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isToday
+                ? clubOrange.withOpacity(0.15)
+                : (isCompleted ? Colors.transparent : const Color(0xFF2C2C2E)),
+            border: Border.all(
+              color: isToday || isCompleted ? clubOrange : Colors.transparent,
+              width: 1.5,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              date,
+              style: TextStyle(
+                color: isToday ? clubOrange : Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// 4. GRAPHIQUE ACTIVITÉ (Compact)
+class _ActivityBarChart extends StatelessWidget {
+  const _ActivityBarChart();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: const [
+          _Bar(label: "Biceps", height: 35, val: "8"),
+          _Bar(label: "Pecs", height: 65, val: "16", isActive: true),
+          _Bar(label: "Dos", height: 60, val: "14", isActive: true),
+          _Bar(label: "Jambes", height: 80, val: "20"),
+          _Bar(label: "Epaules", height: 95, val: "24", isActive: true),
+          _Bar(label: "Bras", height: 50, val: "12"),
+          _Bar(label: "Cardio", height: 40, val: "10"),
+        ],
+      ),
+    );
+  }
+}
+
+class _Bar extends StatelessWidget {
+  final String label;
+  final double height;
+  final String val;
+  final bool isActive;
+
+  const _Bar({
+    required this.label,
+    required this.height,
+    required this.val,
+    this.isActive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        if (isActive) ...[
+          Text(
+            "↑ $val",
+            style: const TextStyle(
+              color: clubOrange,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+        ] else ...[
+          Text(
+            val,
+            style: const TextStyle(
+              color: textSecondary,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+        ],
+        Container(
+          width: 32,
+          height: height,
+          decoration: BoxDecoration(
+            color: isActive ? clubOrange : const Color(0xFF2C2C2E),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 6.0),
+              child: Text(
+                "kg",
+                style: TextStyle(
+                  color: isActive
+                      ? Colors.white.withOpacity(0.7)
+                      : textSecondary.withOpacity(0.5),
+                  fontSize: 9,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: const TextStyle(
+            color: textSecondary,
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// 5. CARTE PROGRAMMES POPULAIRES (Compacte)
+class _PopularMethodCard extends StatelessWidget {
+  final String title;
+  final int variationsCount;
+  final String rating;
+  final String imgUrl;
+  final bool isFavorite;
+  final VoidCallback onFavoriteTap;
+  final VoidCallback onTap;
+
+  const _PopularMethodCard({
+    required this.title,
+    required this.variationsCount,
+    required this.rating,
+    required this.imgUrl,
+    required this.isFavorite,
+    required this.onFavoriteTap,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 220,
+        margin: const EdgeInsets.only(right: 16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: surfaceColor,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              imgUrl.startsWith('http')
+                  ? Image.network(imgUrl, fit: BoxFit.cover)
+                  : Image.asset(imgUrl, fit: BoxFit.cover),
+              // Dark Gradient plus fort pour que le texte ressorte
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.95),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.7],
+                  ),
+                ),
+              ),
+              // Bookmark
+              Positioned(
+                top: 10,
+                right: 10,
+                child: GestureDetector(
+                  onTap: onFavoriteTap,
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.4),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      isFavorite ? Icons.bookmark : Icons.bookmark_border,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                  ),
+                ),
+              ),
+              // Texts (Marges réduites)
+              Positioned(
+                bottom: 12,
+                left: 14,
+                right: 14,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.fitness_center_rounded,
+                          color: textSecondary,
+                          size: 12,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          "$variationsCount Variantes",
+                          style: const TextStyle(
+                            color: textSecondary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(Icons.star, color: textSecondary, size: 12),
+                        const SizedBox(width: 4),
+                        Text(
+                          rating,
+                          style: const TextStyle(
+                            color: textSecondary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// 6. CARTE RECOMMANDATION (Utilisée pour les Actualités)
+class _RecommendationCard extends StatelessWidget {
+  final String title;
+  final String date;
+  final String? imgUrl;
+  final String tag;
+  final VoidCallback onTap;
+
+  const _RecommendationCard({
+    required this.title,
+    required this.date,
+    this.imgUrl,
+    required this.tag,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: surfaceColor,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: SizedBox(
+                width: 70,
+                height: 70,
+                child: imgUrl != null
+                    ? Image.network(
+                        imgUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _fallbackImg(),
+                      )
+                    : _fallbackImg(),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.access_time_rounded,
+                        color: textSecondary,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        date,
+                        style: const TextStyle(
+                          color: textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2C2C2E),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                tag,
+                style: const TextStyle(
+                  color: textSecondary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _fallbackImg() {
+    return Container(
+      color: const Color(0xFF2C2C2E),
+      child: const Center(
+        child: Icon(Icons.article_rounded, color: textSecondary, size: 24),
+      ),
+    );
+  }
+}
+
+// ==========================================
+// ✅ BARRE DE NAVIGATION (FROSTED GLASS INTACTE)
+// ==========================================
 class _GlassBottomNav extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;
@@ -625,66 +1087,71 @@ class _GlassBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
-
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          height: 70 + bottomPadding,
-          padding: EdgeInsets.only(bottom: bottomPadding, left: 6, right: 6),
-          decoration: BoxDecoration(
-            color: navBarColor.withOpacity(0.95),
-            border: Border(
-              top: BorderSide(color: Colors.white.withOpacity(0.08), width: 1),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.5),
-                blurRadius: 18,
-                offset: const Offset(0, -4),
-              ),
-            ],
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
-          child: Row(
-            children: [
-              _NavItem(
-                icon: Icons.home_rounded,
-                label: "Accueil",
-                index: 0,
-                currentIndex: currentIndex,
-                onTap: onTap,
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(999),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: Container(
+            height: 70,
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.2),
+                width: 1,
               ),
-              _NavItem(
-                icon: Icons.fitness_center_rounded,
-                label: "Training",
-                index: 1,
-                currentIndex: currentIndex,
-                onTap: onTap,
-              ),
-              _NavItem(
-                icon: Icons.bar_chart_rounded,
-                label: "Progrès",
-                index: 2,
-                currentIndex: currentIndex,
-                onTap: onTap,
-              ),
-              _NavItem(
-                icon: Icons.monitor_weight_rounded,
-                label: "Haltéro",
-                index: 3,
-                currentIndex: currentIndex,
-                onTap: onTap,
-              ),
-              _NavItem(
-                icon: Icons.card_membership_rounded,
-                label: "Abonnement",
-                index: 4,
-                currentIndex: currentIndex,
-                onTap: onTap,
-              ),
-            ],
+            ),
+            child: Row(
+              children: [
+                _NavItem(
+                  icon: Icons.home_rounded,
+                  label: "Accueil",
+                  index: 0,
+                  currentIndex: currentIndex,
+                  onTap: onTap,
+                ),
+                _NavItem(
+                  icon: Icons.fitness_center_rounded,
+                  label: "Training",
+                  index: 1,
+                  currentIndex: currentIndex,
+                  onTap: onTap,
+                ),
+                _NavItem(
+                  icon: Icons.bar_chart_rounded,
+                  label: "Progrès",
+                  index: 2,
+                  currentIndex: currentIndex,
+                  onTap: onTap,
+                ),
+                _NavItem(
+                  icon: Icons.monitor_weight_rounded,
+                  label: "Haltéro",
+                  index: 3,
+                  currentIndex: currentIndex,
+                  onTap: onTap,
+                ),
+                _NavItem(
+                  icon: Icons.card_membership_rounded,
+                  label: "Abonnement",
+                  index: 4,
+                  currentIndex: currentIndex,
+                  onTap: onTap,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -710,7 +1177,8 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isSelected = index == currentIndex;
-    final Color activeColor = isSelected ? clubOrange : textSecondary;
+    final Color inactiveColor = const Color(0xFF888888);
+    final Color activeColor = isSelected ? clubOrange : inactiveColor;
 
     return Expanded(
       child: Material(
@@ -723,7 +1191,7 @@ class _NavItem extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 22, color: activeColor),
+              Icon(icon, size: 24, color: activeColor),
               const SizedBox(height: 4),
               Text(
                 label,
@@ -749,873 +1217,6 @@ class _NavItem extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _TopBar extends StatelessWidget {
-  final String userName;
-  final String greeting;
-  final int notifCount;
-  final String? userImage;
-  final VoidCallback onProfileTap;
-  final VoidCallback onNotifTap;
-
-  const _TopBar({
-    required this.userName,
-    required this.greeting,
-    required this.notifCount,
-    this.userImage,
-    required this.onProfileTap,
-    required this.onNotifTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        _CircleIcon(
-          userImage: userImage,
-          icon: Icons.person_outline,
-          onTap: onProfileTap,
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                greeting,
-                style: const TextStyle(
-                  color: textSecondary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                userName, // Affichage du nom complet directement, sans transformer en minuscules
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: textPrimary,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.2,
-                  fontSize: 20,
-                ),
-              ),
-            ],
-          ),
-        ),
-        GestureDetector(
-          onTap: onNotifTap,
-          child: Badge(
-            isLabelVisible: notifCount > 0,
-            backgroundColor: const Color(0xFFE55B5B),
-            textColor: Colors.white,
-            label: Text("$notifCount"),
-            offset: const Offset(-2, 4),
-            child: const Padding(
-              padding: EdgeInsets.all(4.0),
-              child: Icon(
-                Icons.notifications_none_rounded,
-                color: Colors.white,
-                size: 28,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _CircleIcon extends StatelessWidget {
-  final IconData icon;
-  final String? userImage;
-  final VoidCallback onTap;
-
-  const _CircleIcon({required this.icon, this.userImage, required this.onTap});
-
-  ImageProvider? _resolveImageProvider(String? value) {
-    if (value == null || value.trim().isEmpty) return null;
-    final v = value.trim();
-
-    try {
-      if (v.startsWith('http://') || v.startsWith('https://')) {
-        final fixed = v
-            .replaceFirst('http://127.0.0.1:8000', 'http://10.0.2.2:8000')
-            .replaceFirst('http://localhost:8000', 'http://10.0.2.2:8000');
-        return NetworkImage(fixed);
-      }
-
-      if (v.startsWith('/') || v.startsWith('uploads/')) {
-        final fixed = v.startsWith('/')
-            ? 'http://10.0.2.2:8000$v'
-            : 'http://10.0.2.2:8000/$v';
-        return NetworkImage(fixed);
-      }
-
-      final raw = v.contains(',') ? v.split(',').last : v;
-      return MemoryImage(base64Decode(raw));
-    } catch (_) {
-      return null;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final imageProvider = _resolveImageProvider(userImage);
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        width: 50,
-        height: 50,
-        decoration: BoxDecoration(
-          color: surfaceColor,
-          shape: BoxShape.circle,
-          image: imageProvider != null
-              ? DecorationImage(image: imageProvider, fit: BoxFit.cover)
-              : null,
-        ),
-        child: imageProvider == null
-            ? Center(child: Icon(icon, size: 24, color: textPrimary))
-            : null,
-      ),
-    );
-  }
-}
-
-class _WelcomeCard extends StatelessWidget {
-  final String name;
-
-  const _WelcomeCard({required this.name});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 140,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF57809),
-        borderRadius: BorderRadius.circular(0),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "BONJOUR $name",
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-              fontSize: 22,
-              letterSpacing: -0.2,
-            ),
-          ),
-          const SizedBox(height: 10),
-          const Expanded(
-            child: Text(
-              "Prêt à repousser tes limites ?\nChaque répétition te rapproche de ton objectif.\nDonne le maximum aujourd'hui !",
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                height: 1.4,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FavoritesSummaryCard extends StatelessWidget {
-  const _FavoritesSummaryCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 140,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(0),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Expanded(
-              child: Padding(
-                padding: EdgeInsets.only(left: 20.0),
-                child: Text(
-                  "MES FAVORIS",
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 18,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(right: 0),
-              child: Transform.translate(
-                offset: const Offset(0, 10),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.asset(
-                    'assets/images/image.png',
-                    width: 140,
-                    height: 140,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  final String title;
-  final String? actionText;
-  final VoidCallback? onAction;
-  final Color actionColor;
-
-  const _SectionTitle({
-    required this.title,
-    this.actionText,
-    this.onAction,
-    required this.actionColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            title,
-            style: const TextStyle(
-              color: textPrimary,
-              fontWeight: FontWeight.w700,
-              fontSize: 16,
-              letterSpacing: -0.1,
-            ),
-          ),
-        ),
-        if (actionText != null && onAction != null)
-          TextButton(
-            onPressed: onAction,
-            style: TextButton.styleFrom(
-              foregroundColor: actionColor,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              minimumSize: const Size(0, 32),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: Text(
-              actionText!,
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: actionColor,
-                fontSize: 12.5,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _PremiumWorkoutCard extends StatelessWidget {
-  final String title;
-  final String description;
-  final int variationsCount;
-  final String averageTime;
-  final String imgUrl;
-  final IconData fallbackIcon;
-  final VoidCallback onTap;
-  final bool isFavorite;
-  final VoidCallback? onFavoriteTap;
-
-  const _PremiumWorkoutCard({
-    required this.title,
-    required this.description,
-    required this.variationsCount,
-    required this.averageTime,
-    required this.imgUrl,
-    required this.fallbackIcon,
-    required this.onTap,
-    this.isFavorite = false,
-    this.onFavoriteTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    const Color surfaceColor = Color(0xFF1C1C22);
-    const Color textPrimary = Color(0xFFFFFFFF);
-    const Color textSecondary = Color(0xFFA0A5B1);
-    const Color softBorder = Color(0xFF333333);
-    const Color accent = Color(0xFFF57809);
-
-    return Container(
-      width: 260,
-      margin: const EdgeInsets.only(right: 16),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
-          child: Ink(
-            decoration: BoxDecoration(
-              color: surfaceColor,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.05),
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 15,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(20),
-                  ),
-                  child: SizedBox(
-                    height: 125,
-                    width: double.infinity,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        imgUrl.startsWith('http')
-                            ? Image.network(
-                                imgUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => Container(
-                                  color: softBorder,
-                                  child: Center(
-                                    child: Icon(
-                                      fallbackIcon,
-                                      size: 32,
-                                      color: textSecondary.withOpacity(0.5),
-                                    ),
-                                  ),
-                                ),
-                              )
-                            : Image.asset(
-                                imgUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => Container(
-                                  color: softBorder,
-                                  child: Center(
-                                    child: Icon(
-                                      fallbackIcon,
-                                      size: 32,
-                                      color: textSecondary.withOpacity(0.5),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.bottomCenter,
-                              end: Alignment.topCenter,
-                              colors: [
-                                Colors.black.withOpacity(0.6),
-                                Colors.transparent,
-                              ],
-                            ),
-                          ),
-                        ),
-                        if (onFavoriteTap != null)
-                          Positioned(
-                            top: 10,
-                            right: 10,
-                            child: GestureDetector(
-                              onTap: onFavoriteTap,
-                              child: Container(
-                                width: 34,
-                                height: 34,
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.4),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: Colors.white.withOpacity(0.1),
-                                  ),
-                                ),
-                                child: Icon(
-                                  isFavorite
-                                      ? Icons.favorite_rounded
-                                      : Icons.favorite_border_rounded,
-                                  size: 18,
-                                  color: isFavorite ? accent : Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title.toUpperCase(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: textPrimary,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 16,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          description,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: textSecondary,
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w500,
-                            height: 1.4,
-                          ),
-                        ),
-                        const Spacer(),
-                        Divider(
-                          color: Colors.white.withOpacity(0.05),
-                          height: 16,
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.layers_rounded,
-                                      color: accent,
-                                      size: 14,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      "$variationsCount variantes",
-                                      style: const TextStyle(
-                                        color: accent,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.timer_outlined,
-                                      color: textSecondary,
-                                      size: 14,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      "~ $averageTime",
-                                      style: const TextStyle(
-                                        color: textSecondary,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: accent,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: accent.withOpacity(0.3),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.arrow_forward_rounded,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NutritionCard extends StatelessWidget {
-  const _NutritionCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: clubOrange.withOpacity(0.15),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.restaurant_rounded,
-              color: clubOrange,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  "Protéines & Récupération",
-                  style: TextStyle(
-                    color: textPrimary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                  ),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  "Vise entre 1.6g et 2g de protéines par kilo de poids de corps chaque jour. Cela maximisera ta reconstruction musculaire après l'effort et optimisera tes résultats.",
-                  style: TextStyle(
-                    color: textSecondary,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 13,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NewsCard extends StatelessWidget {
-  final Color accent;
-  final String title;
-  final String subtitle;
-  final String? imageUrl;
-  final String? publishedAt;
-  final VoidCallback? onTap;
-
-  const _NewsCard({
-    required this.accent,
-    required this.title,
-    required this.subtitle,
-    this.imageUrl,
-    this.publishedAt,
-    this.onTap,
-  });
-
-  String _formatDate(String? isoString) {
-    if (isoString == null || isoString.isEmpty) return "Actualité";
-    try {
-      final dt = DateTime.parse(isoString).toLocal();
-      final d = dt.day.toString().padLeft(2, '0');
-      final m = dt.month.toString().padLeft(2, '0');
-      final y = dt.year.toString();
-      return "$d/$m/$y";
-    } catch (_) {
-      return "Actualité";
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final dateLabel = _formatDate(publishedAt);
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Ink(
-          decoration: BoxDecoration(
-            color: surfaceColor,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(16),
-                ),
-                child: SizedBox(
-                  height: 170,
-                  width: double.infinity,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      if (imageUrl != null)
-                        Image.network(
-                          imageUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return _NewsImageFallback(accent: accent);
-                          },
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return Container(
-                              color: softBorder,
-                              alignment: Alignment.center,
-                              child: const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.2,
-                                  color: clubOrange,
-                                ),
-                              ),
-                            );
-                          },
-                        )
-                      else
-                        _NewsImageFallback(accent: accent),
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.black.withOpacity(0.3),
-                              Colors.transparent,
-                            ],
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        top: 10,
-                        left: 10,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.92),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.calendar_today_rounded,
-                                size: 13,
-                                color: accent,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                dateLabel,
-                                style: const TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: textPrimary,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        height: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      subtitle,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: textSecondary,
-                        fontWeight: FontWeight.w500,
-                        fontSize: 13,
-                        height: 1.3,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Icon(Icons.article_rounded, size: 16, color: accent),
-                        const SizedBox(width: 6),
-                        const Text(
-                          "Lire l’actualité",
-                          style: TextStyle(
-                            color: clubOrange,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12.5,
-                          ),
-                        ),
-                        const Spacer(),
-                        Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          size: 13,
-                          color: textSecondary,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NewsImageFallback extends StatelessWidget {
-  final Color accent;
-
-  const _NewsImageFallback({required this.accent});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: softBorder,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Positioned(
-            right: -12,
-            top: -8,
-            child: Icon(
-              Icons.fitness_center_rounded,
-              size: 100,
-              color: accent.withOpacity(0.08),
-            ),
-          ),
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.image_not_supported_rounded,
-                  color: textSecondary,
-                  size: 26,
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  "Image indisponible",
-                  style: TextStyle(
-                    color: textSecondary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
