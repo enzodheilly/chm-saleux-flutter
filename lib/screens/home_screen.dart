@@ -14,6 +14,7 @@ import '../services/news_service.dart';
 import 'workout_player_screen.dart';
 import 'create_routine_screen.dart';
 import 'profile_screen.dart';
+import 'program_config_screen.dart';
 
 const Color clubOrange = Color(0xFFF57809);
 const Color appBackground = Color(0xFF000000);
@@ -101,21 +102,34 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  String? _buildArticleImageUrl(dynamic photoValue) {
-    if (photoValue == null) return null;
-    final raw = photoValue.toString().trim();
-    if (raw.isEmpty) return null;
+  // =========================================================
+  // ✅ HELPERS URL IMAGES BACKEND (Seulement pour Profil & News)
+  // =========================================================
 
-    if (raw.startsWith('http://') || raw.startsWith('https://')) {
-      return raw;
+  String? _resolveBackendImageUrl(dynamic rawValue) {
+    if (rawValue == null) return null;
+
+    final raw = rawValue.toString().trim();
+    if (raw.isEmpty || raw == 'null') return null;
+
+    if (raw.startsWith('https://')) return raw;
+    if (raw.startsWith('http://127.0.0.1:8000')) {
+      return raw.replaceFirst('http://127.0.0.1:8000', 'http://10.0.2.2:8000');
     }
-    if (raw.startsWith('/')) {
-      return 'http://10.0.2.2:8000$raw';
+    if (raw.startsWith('http://localhost:8000')) {
+      return raw.replaceFirst('http://localhost:8000', 'http://10.0.2.2:8000');
     }
-    if (raw.startsWith('uploads/')) {
-      return 'http://10.0.2.2:8000/$raw';
-    }
+    if (raw.startsWith('http://')) return raw;
+
+    if (raw.startsWith('/uploads/')) return 'http://10.0.2.2:8000$raw';
+    if (raw.startsWith('uploads/')) return 'http://10.0.2.2:8000/$raw';
+    if (raw.startsWith('/')) return 'http://10.0.2.2:8000$raw';
+
     return 'http://10.0.2.2:8000/uploads/$raw';
+  }
+
+  String? _buildArticleImageUrl(dynamic photoValue) {
+    return _resolveBackendImageUrl(photoValue);
   }
 
   void _toggleFavorite(int routineId) {
@@ -128,33 +142,118 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  // =========================================================
+  // ✅ HELPERS (Images & Textes) POUR LES ROUTINES
+  // =========================================================
+
+  String _getCategoryDescription(String title) {
+    final t = title.toLowerCase();
+    if (t.contains("pec") || t.contains("push")) {
+      return "Travaille ta force de poussée et sculpte un torse puissant.";
+    }
+    if (t.contains("dos") || t.contains("pull")) {
+      return "Construis un dos large et épais grâce à ces tirages ciblés.";
+    }
+    if (t.contains("jambe") || t.contains("bas")) {
+      return "Le fondement de ta force. Des quadriceps aux mollets.";
+    }
+    if (t.contains("bras") || t.contains("biceps") || t.contains("triceps")) {
+      return "Isole tes muscles pour des bras massifs et dessinés.";
+    }
+    if (t.contains("epaule") || t.contains("épaule")) {
+      return "Développe des épaules larges et fortes en 3D.";
+    }
+    if (t.contains("cardio") || t.contains("run")) {
+      return "Améliore ton endurance et brûle un maximum de calories.";
+    }
+    if (t.contains("mobil")) {
+      return "Gagne en souplesse, récupère mieux et préviens les blessures.";
+    }
+    if (t.contains("perte") || t.contains("poids")) {
+      return "Des circuits haute intensité pour fondre efficacement.";
+    }
+    if (t.contains("full") || t.contains("body")) {
+      return "Sollicite tout ton corps pour un développement harmonieux.";
+    }
+    return "Repousse tes limites avec ces entraînements ciblés spécialement pour toi.";
+  }
+
   String _getImageForGroup(String groupName) {
     final name = groupName.toLowerCase().trim();
-    if (name.contains("pec") || name.contains("chest")) {
-      return "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80";
+    if (name.contains("pec") ||
+        name.contains("chest") ||
+        name.contains("push")) {
+      return "assets/images/pecs.jpg";
     }
-    if (name.contains("dos") || name.contains("back")) {
-      return "https://images.unsplash.com/photo-1603287681836-e54f0e4475ac?w=800&q=80";
+    if (name.contains("dos") ||
+        name.contains("back") ||
+        name.contains("pull")) {
+      return "assets/images/dos.jpg";
     }
-    if (name.contains("jambe") || name.contains("leg")) {
-      return "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=800&q=80";
+    if (name.contains("jambe") ||
+        name.contains("leg") ||
+        name.contains("bas")) {
+      return "assets/images/jambes.jpg";
     }
-    if (name.contains("bras") || name.contains("arm")) {
-      return "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=800&q=80";
+    if (name.contains("bras") ||
+        name.contains("arm") ||
+        name.contains("biceps") ||
+        name.contains("triceps")) {
+      return "assets/images/bras.jpg";
     }
-    if (name.contains("epaule") || name.contains("shoulder")) {
-      return "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=800&q=80";
+    if (name.contains("epaule") || name.contains("épaule")) {
+      return "assets/images/epaules.jpg";
     }
     if (name.contains("abdo") || name.contains("abs")) {
-      return "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&q=80";
+      return "assets/images/abdos.jpg";
     }
     if (name.contains("cardio") || name.contains("run")) {
-      return "https://images.unsplash.com/photo-1538805060504-6335d7aa1b7e?w=800&q=80";
+      return "assets/images/cardio.jpg";
     }
-    if (name.contains("full") || name.contains("body")) {
-      return "https://images.unsplash.com/photo-1517963879466-e9b5ce3825bf?w=800&q=80";
+    if (name.contains("mobil")) {
+      return "assets/images/mobilite.jpg";
     }
-    return "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80";
+    if (name.contains("perte") || name.contains("poids")) {
+      return "assets/images/perte_poids.jpg";
+    }
+    if (name.contains("full") ||
+        name.contains("body") ||
+        name.contains("haut")) {
+      return "assets/images/fullbody.jpg";
+    }
+    return "assets/images/default.jpg";
+  }
+
+  IconData _getIconForCategory(String category) {
+    final c = category.toLowerCase();
+    if (c.contains('pec') || c.contains('push')) return Icons.fitness_center;
+    if (c.contains('dos') || c.contains('back') || c.contains('pull')) {
+      return Icons.accessibility_new_rounded;
+    }
+    if (c.contains('jambe') || c.contains('leg')) {
+      return Icons.directions_run_rounded;
+    }
+    if (c.contains('bras') || c.contains('arm')) {
+      return Icons.sports_gymnastics_rounded;
+    }
+    if (c.contains('triceps') || c.contains('avant')) {
+      return Icons.sports_gymnastics_rounded;
+    }
+    if (c.contains('epaule') || c.contains('épaule')) {
+      return Icons.accessibility_rounded;
+    }
+    if (c.contains('abdo')) return Icons.sports_martial_arts_rounded;
+    if (c.contains('cardio') || c.contains('run')) {
+      return Icons.monitor_heart_rounded;
+    }
+    if (c.contains('mobil')) return Icons.self_improvement_rounded;
+    if (c.contains('perte') || c.contains('poids')) {
+      return Icons.monitor_weight_rounded;
+    }
+    if (c.contains('full') || c.contains('body')) {
+      return Icons.accessibility_new_rounded;
+    }
+    return Icons.fitness_center_rounded;
   }
 
   List<Map<String, dynamic>> _buildForYouPrograms() {
@@ -173,54 +272,29 @@ class _HomeScreenState extends State<HomeScreen> {
     return takeGroups.map((g) {
       final variations = grouped[g]!;
       final rep = variations.first;
+
       final duration = rep['estimatedDurationMin'] ?? 60;
       final level = (rep['level'] ?? "intermediaire").toString();
       final labelLevel = level == "debutant"
           ? "Débutant"
           : (level == "avance" ? "Avancé" : "Intermédiaire");
 
+      final routineImageUrl = _getImageForGroup(g);
+      final desc = _getCategoryDescription(g);
+
       return {
         "title": g,
-        "subtitle":
-            "${variations.length} variantes • ~ $duration min • $labelLevel",
-        "imgUrl": _getImageForGroup(g),
+        "subtitle": labelLevel,
+        "description": desc,
+        "variationsCount": variations.length,
+        "averageTime": "$duration min",
+        "imgUrl": routineImageUrl,
+        "categoryForIcon": g,
         "routineId": rep['id'],
         "routineName": rep['name'] ?? g,
+        "variations": variations,
       };
     }).toList();
-  }
-
-  List<_DayPoint> _buildAttendancePoints({int days = 14}) {
-    final now = DateTime.now();
-    final Set<String> attended = {};
-
-    for (final s in lastSessions) {
-      final iso = (s['performed_at'] ?? "").toString();
-      if (iso.isEmpty) continue;
-      try {
-        final dt = DateTime.parse(iso).toLocal();
-        final key =
-            "${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}";
-        attended.add(key);
-      } catch (_) {}
-    }
-
-    final List<_DayPoint> pts = [];
-    for (int i = days - 1; i >= 0; i--) {
-      final d = now.subtract(Duration(days: i));
-      final key =
-          "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
-      final isOn = attended.contains(key);
-      pts.add(
-        _DayPoint(
-          dayLabel:
-              "${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}",
-          value: isOn ? 1 : 0,
-          isToday: i == 0,
-        ),
-      );
-    }
-    return pts;
   }
 
   @override
@@ -228,7 +302,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: appBackground,
       body: SafeArea(
-        bottom: false,
+        bottom: false, // <-- Crucial pour que la barre aille tout en bas
         child: Column(
           children: [
             Container(
@@ -248,7 +322,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 onNotifTap: () {},
               ),
             ),
-
             Expanded(
               child: Stack(
                 children: [
@@ -278,7 +351,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
                   ),
-
                   Consumer<WorkoutManager>(
                     builder: (context, manager, child) {
                       if (!manager.isActive) return const SizedBox.shrink();
@@ -291,16 +363,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     },
                   ),
-
                   Positioned(
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    child: SafeArea(
-                      child: _GlassBottomNav(
-                        currentIndex: _selectedIndex,
-                        onTap: (i) => setState(() => _selectedIndex = i),
-                      ),
+                    // ✅ MODIFICATION ICI : On a retiré le SafeArea wrapper
+                    child: _GlassBottomNav(
+                      currentIndex: _selectedIndex,
+                      onTap: (i) => setState(() => _selectedIndex = i),
                     ),
                   ),
                 ],
@@ -360,8 +430,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildUserTab() {
     final forYou = _buildForYouPrograms();
-    final attendance = _buildAttendancePoints(days: 14);
-    final attendedCount = attendance.where((e) => e.value > 0).length;
 
     return ListView(
       physics: const BouncingScrollPhysics(),
@@ -371,16 +439,12 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: _WelcomeCard(name: currentUserName),
         ),
-
         const SizedBox(height: 18),
-
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 16.0),
           child: _FavoritesSummaryCard(),
         ),
-
         const SizedBox(height: 24),
-
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: _SectionTitle(
@@ -391,9 +455,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const SizedBox(height: 12),
-
         SizedBox(
-          height: 230,
+          height: 280,
           child: isLoading
               ? const Center(
                   child: CircularProgressIndicator(color: clubOrange),
@@ -407,27 +470,32 @@ class _HomeScreenState extends State<HomeScreen> {
                       )
                     : ListView.builder(
                         scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.only(left: 16, right: 8),
+                        padding: const EdgeInsets.only(left: 16, right: 0),
                         physics: const BouncingScrollPhysics(),
                         itemCount: forYou.length,
                         itemBuilder: (context, i) {
                           final item = forYou[i];
                           final routineId = item["routineId"] as int;
 
-                          return _WorkoutCard(
+                          return _PremiumWorkoutCard(
                             title: item["title"].toString(),
-                            subtitle: item["subtitle"].toString(),
+                            description: item["description"].toString(),
+                            variationsCount: item["variationsCount"] as int,
+                            averageTime: item["averageTime"].toString(),
                             imgUrl: item["imgUrl"].toString(),
-                            accent: clubOrange,
+                            fallbackIcon: _getIconForCategory(
+                              item["categoryForIcon"].toString(),
+                            ),
                             isFavorite: _favoriteRoutineIds.contains(routineId),
                             onFavoriteTap: () => _toggleFavorite(routineId),
                             onTap: () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => WorkoutPlayerScreen(
-                                    routineId: routineId,
-                                    routineName: item["routineName"].toString(),
+                                  builder: (_) => ProgramConfigScreen(
+                                    muscleGroup: item["title"].toString(),
+                                    variations:
+                                        item["variations"] as List<dynamic>,
                                   ),
                                 ),
                               );
@@ -436,30 +504,21 @@ class _HomeScreenState extends State<HomeScreen> {
                         },
                       )),
         ),
-
         const SizedBox(height: 24),
 
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: _SectionTitle(
-            title: "Assiduité",
-            actionText: "14 jours",
+            title: "Conseil Nutritionnel",
             actionColor: textSecondary,
             onAction: () {},
           ),
         ),
         const SizedBox(height: 10),
-
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: _AttendanceCard(
-            accent: clubOrange,
-            points: attendance,
-            summaryText:
-                "$attendedCount jour(s) d'entraînement sur ${attendance.length} jours",
-          ),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.0),
+          child: _NutritionCard(),
         ),
-
         const SizedBox(height: 18),
       ],
     );
@@ -511,6 +570,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
+// =====================
+// ✅ BARRE DE NAVIGATION (Refaite mode App Native)
+// =====================
 class _GlassBottomNav extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;
@@ -519,66 +581,67 @@ class _GlassBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            height: 78,
-            padding: const EdgeInsets.symmetric(horizontal: 6),
-            decoration: BoxDecoration(
-              color: navBarColor.withOpacity(0.95),
-              borderRadius: BorderRadius.circular(18),
-              // Plus de bordure ici non plus pour rester cohérent
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.5),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-              ],
+    // Permet de s'assurer que les icônes ne sont pas cachées par la petite barre iPhone en bas
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          height: 70 + bottomPadding,
+          padding: EdgeInsets.only(bottom: bottomPadding, left: 6, right: 6),
+          decoration: BoxDecoration(
+            color: navBarColor.withOpacity(0.95),
+            border: Border(
+              top: BorderSide(color: Colors.white.withOpacity(0.08), width: 1),
             ),
-            child: Row(
-              children: [
-                _NavItem(
-                  icon: Icons.home_rounded,
-                  label: "Accueil",
-                  index: 0,
-                  currentIndex: currentIndex,
-                  onTap: onTap,
-                ),
-                _NavItem(
-                  icon: Icons.fitness_center_rounded,
-                  label: "Training",
-                  index: 1,
-                  currentIndex: currentIndex,
-                  onTap: onTap,
-                ),
-                _NavItem(
-                  icon: Icons.bar_chart_rounded,
-                  label: "Progrès",
-                  index: 2,
-                  currentIndex: currentIndex,
-                  onTap: onTap,
-                ),
-                _NavItem(
-                  icon: Icons.monitor_weight_rounded,
-                  label: "Haltéro",
-                  index: 3,
-                  currentIndex: currentIndex,
-                  onTap: onTap,
-                ),
-                _NavItem(
-                  icon: Icons.card_membership_rounded,
-                  label: "Abonnement",
-                  index: 4,
-                  currentIndex: currentIndex,
-                  onTap: onTap,
-                ),
-              ],
-            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.5),
+                blurRadius: 18,
+                offset: const Offset(0, -4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              _NavItem(
+                icon: Icons.home_rounded,
+                label: "Accueil",
+                index: 0,
+                currentIndex: currentIndex,
+                onTap: onTap,
+              ),
+              _NavItem(
+                icon: Icons.fitness_center_rounded,
+                label: "Training",
+                index: 1,
+                currentIndex: currentIndex,
+                onTap: onTap,
+              ),
+              _NavItem(
+                icon: Icons.bar_chart_rounded,
+                label: "Progrès",
+                index: 2,
+                currentIndex: currentIndex,
+                onTap: onTap,
+              ),
+              _NavItem(
+                icon: Icons.monitor_weight_rounded,
+                label: "Haltéro",
+                index: 3,
+                currentIndex: currentIndex,
+                onTap: onTap,
+              ),
+              _NavItem(
+                icon: Icons.card_membership_rounded,
+                label: "Abonnement",
+                index: 4,
+                currentIndex: currentIndex,
+                onTap: onTap,
+              ),
+            ],
           ),
         ),
       ),
@@ -711,9 +774,20 @@ class _CircleIcon extends StatelessWidget {
 
     try {
       if (v.startsWith('http://') || v.startsWith('https://')) {
-        return NetworkImage(v);
+        final fixed = v
+            .replaceFirst('http://127.0.0.1:8000', 'http://10.0.2.2:8000')
+            .replaceFirst('http://localhost:8000', 'http://10.0.2.2:8000');
+        return NetworkImage(fixed);
       }
 
+      if (v.startsWith('/') || v.startsWith('uploads/')) {
+        final fixed = v.startsWith('/')
+            ? 'http://10.0.2.2:8000$v'
+            : 'http://10.0.2.2:8000/$v';
+        return NetworkImage(fixed);
+      }
+
+      // sinon on suppose base64
       final raw = v.contains(',') ? v.split(',').last : v;
       return MemoryImage(base64Decode(raw));
     } catch (_) {
@@ -734,7 +808,6 @@ class _CircleIcon extends StatelessWidget {
         decoration: BoxDecoration(
           color: surfaceColor,
           shape: BoxShape.circle,
-          // Plus de bordure ici
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.2),
@@ -762,12 +835,11 @@ class _WelcomeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 140, // ✅ Hauteur fixe définie
+      height: 140,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: const Color(0xFFF57809),
         borderRadius: BorderRadius.circular(0),
-        // Plus de bordure, juste l'ombre
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.3),
@@ -780,7 +852,7 @@ class _WelcomeCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "BONJOUR $name", // ✅ Mis en majuscules
+            "BONJOUR $name",
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
@@ -793,7 +865,7 @@ class _WelcomeCard extends StatelessWidget {
           const SizedBox(height: 10),
           const Expanded(
             child: Text(
-              "Prêt à repousser tes limites ?\nChaque répétition te rapproche de ton objectif.\nDonne le maximum aujourd'hui !", // ✅ Texte court sur 3 lignes
+              "Prêt à repousser tes limites ?\nChaque répétition te rapproche de ton objectif.\nDonne le maximum aujourd'hui !",
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -828,13 +900,11 @@ class _FavoritesSummaryCard extends StatelessWidget {
           ),
         ],
       ),
-      // Ce ClipRRect global s'assure que si l'image dépasse, elle est coupée proprement dans l'arrondi
       child: ClipRRect(
         borderRadius: BorderRadius.circular(0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // ✅ LE TEXTE (À gauche)
             const Expanded(
               child: Padding(
                 padding: EdgeInsets.only(left: 20.0),
@@ -849,26 +919,16 @@ class _FavoritesSummaryCard extends StatelessWidget {
                 ),
               ),
             ),
-
-            // ✅ L'IMAGE (À droite, avec padding et réglage haut/bas)
             Padding(
-              padding: const EdgeInsets.only(
-                right: 0,
-              ), // 👈 1. Padding à droite remis ici !
+              padding: const EdgeInsets.only(right: 0),
               child: Transform.translate(
-                // 👈 2. L'OPTION POUR MONTER OU DESCENDRE !
-                // Offset(X, Y) :
-                // X = 0 (on ne bouge pas de gauche à droite)
-                // Y = 10 (nombre positif = descendre | nombre négatif ex: -10 = monter)
                 offset: const Offset(0, 10),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(
-                    12,
-                  ), // On remet des petits bords arrondis à l'image
+                  borderRadius: BorderRadius.circular(12),
                   child: Image.asset(
                     'assets/images/image.png',
-                    width: 140, // Taille de l'image
-                    height: 140, // Taille de l'image
+                    width: 140,
+                    height: 140,
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -932,45 +992,58 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-class _WorkoutCard extends StatelessWidget {
+class _PremiumWorkoutCard extends StatelessWidget {
   final String title;
-  final String subtitle;
+  final String description;
+  final int variationsCount;
+  final String averageTime;
   final String imgUrl;
-  final Color accent;
-  final VoidCallback? onTap;
+  final IconData fallbackIcon;
+  final VoidCallback onTap;
   final bool isFavorite;
   final VoidCallback? onFavoriteTap;
 
-  const _WorkoutCard({
+  const _PremiumWorkoutCard({
     required this.title,
-    required this.subtitle,
+    required this.description,
+    required this.variationsCount,
+    required this.averageTime,
     required this.imgUrl,
-    required this.accent,
-    this.onTap,
+    required this.fallbackIcon,
+    required this.onTap,
     this.isFavorite = false,
     this.onFavoriteTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    const Color surfaceColor = Color(0xFF1C1C22);
+    const Color textPrimary = Color(0xFFFFFFFF);
+    const Color textSecondary = Color(0xFFA0A5B1);
+    const Color softBorder = Color(0xFF333333);
+    const Color accent = Color(0xFFF57809);
+
     return Container(
       width: 260,
-      margin: const EdgeInsets.only(right: 12),
+      margin: const EdgeInsets.only(right: 16),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           child: Ink(
             decoration: BoxDecoration(
               color: surfaceColor,
-              borderRadius: BorderRadius.circular(16),
-              // ✅ Plus de bordure (border retiré)
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.05),
+                width: 1,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 15,
+                  offset: const Offset(0, 8),
                 ),
               ],
             ),
@@ -979,129 +1052,184 @@ class _WorkoutCard extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(16),
+                    top: Radius.circular(20),
                   ),
                   child: SizedBox(
-                    height: 120,
+                    height: 125,
                     width: double.infinity,
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        Image.network(
-                          imgUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            color: const Color(0xFFF1F3F5),
-                            child: Icon(
-                              Icons.image_not_supported_outlined,
-                              color: Colors.grey.shade500,
-                            ),
-                          ),
-                        ),
+                        imgUrl.startsWith('http')
+                            ? Image.network(
+                                imgUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => Container(
+                                  color: softBorder,
+                                  child: Center(
+                                    child: Icon(
+                                      fallbackIcon,
+                                      size: 32,
+                                      color: textSecondary.withOpacity(0.5),
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : Image.asset(
+                                imgUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => Container(
+                                  color: softBorder,
+                                  child: Center(
+                                    child: Icon(
+                                      fallbackIcon,
+                                      size: 32,
+                                      color: textSecondary.withOpacity(0.5),
+                                    ),
+                                  ),
+                                ),
+                              ),
                         DecoratedBox(
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               begin: Alignment.bottomCenter,
                               end: Alignment.topCenter,
                               colors: [
-                                Colors.black.withOpacity(0.4),
+                                Colors.black.withOpacity(0.6),
                                 Colors.transparent,
                               ],
                             ),
                           ),
                         ),
-                        Positioned(
-                          top: 10,
-                          right: 10,
-                          child: GestureDetector(
-                            onTap: onFavoriteTap,
-                            child: Container(
-                              width: 34,
-                              height: 34,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.92),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Icon(
-                                isFavorite
-                                    ? Icons.favorite_rounded
-                                    : Icons.favorite_border_rounded,
-                                size: 18,
-                                color: isFavorite ? clubOrange : textSecondary,
+                        if (onFavoriteTap != null)
+                          Positioned(
+                            top: 10,
+                            right: 10,
+                            child: GestureDetector(
+                              onTap: onFavoriteTap,
+                              child: Container(
+                                width: 34,
+                                height: 34,
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.4),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.1),
+                                  ),
+                                ),
+                                child: Icon(
+                                  isFavorite
+                                      ? Icons.favorite_rounded
+                                      : Icons.favorite_border_rounded,
+                                  size: 18,
+                                  color: isFavorite ? accent : Colors.white,
+                                ),
                               ),
                             ),
                           ),
-                        ),
                       ],
                     ),
                   ),
                 ),
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                    padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           title.toUpperCase(),
-                          maxLines: 2,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: textPrimary,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14.5,
-                            height: 1.15,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                            letterSpacing: 0.5,
                           ),
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          subtitle,
+                          description,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: textSecondary,
-                            fontSize: 12,
+                            fontSize: 12.5,
                             fontWeight: FontWeight.w500,
-                            height: 1.25,
+                            height: 1.4,
                           ),
                         ),
                         const Spacer(),
+                        Divider(
+                          color: Colors.white.withOpacity(0.05),
+                          height: 16,
+                        ),
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 7,
-                              ),
-                              decoration: BoxDecoration(
-                                color: clubOrange.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.play_arrow_rounded,
-                                    color: clubOrange,
-                                    size: 16,
-                                  ),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    "Lancer",
-                                    style: TextStyle(
-                                      color: clubOrange,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12,
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.layers_rounded,
+                                      color: accent,
+                                      size: 14,
                                     ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      "$variationsCount variantes",
+                                      style: const TextStyle(
+                                        color: accent,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.timer_outlined,
+                                      color: textSecondary,
+                                      size: 14,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      "~ $averageTime",
+                                      style: const TextStyle(
+                                        color: textSecondary,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: accent,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: accent.withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
                                   ),
                                 ],
                               ),
-                            ),
-                            const Spacer(),
-                            Icon(
-                              Icons.arrow_forward_ios_rounded,
-                              size: 13,
-                              color: textSecondary,
+                              child: const Icon(
+                                Icons.arrow_forward_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
                             ),
                           ],
                         ),
@@ -1118,30 +1246,16 @@ class _WorkoutCard extends StatelessWidget {
   }
 }
 
-class _AttendanceCard extends StatelessWidget {
-  final Color accent;
-  final List<_DayPoint> points;
-  final String summaryText;
-
-  const _AttendanceCard({
-    required this.accent,
-    required this.points,
-    required this.summaryText,
-  });
+class _NutritionCard extends StatelessWidget {
+  const _NutritionCard();
 
   @override
   Widget build(BuildContext context) {
-    final activeCount = points.where((e) => e.value > 0).length;
-    final percent = points.isEmpty
-        ? 0
-        : ((activeCount / points.length) * 100).round();
-
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: surfaceColor,
         borderRadius: BorderRadius.circular(16),
-        // ✅ Plus de bordure (border retiré)
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.2),
@@ -1150,94 +1264,46 @@ class _AttendanceCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Text(
-                "Régularité",
-                style: TextStyle(
-                  color: textPrimary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
-                ),
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                decoration: BoxDecoration(
-                  color: accent.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  "$percent%",
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: clubOrange.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.restaurant_rounded,
+              color: clubOrange,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  "Protéines & Récupération",
                   style: TextStyle(
-                    color: accent,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
+                    color: textPrimary,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            summaryText,
-            style: const TextStyle(
-              color: textSecondary,
-              fontWeight: FontWeight.w500,
-              fontSize: 12.5,
-              height: 1.25,
-            ),
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            height: 54,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: points.map((p) {
-                final on = p.value > 0;
-                return Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeOut,
-                      height: on ? (p.isToday ? 52 : 40) : 10,
-                      decoration: BoxDecoration(
-                        color: on
-                            ? accent.withOpacity(p.isToday ? 0.95 : 0.65)
-                            : softBorder,
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    ),
+                SizedBox(height: 6),
+                Text(
+                  "Vise entre 1.6g et 2g de protéines par kilo de poids de corps chaque jour. Cela maximisera ta reconstruction musculaire après l'effort et optimisera tes résultats.",
+                  style: TextStyle(
+                    color: textSecondary,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 13,
+                    height: 1.4,
                   ),
-                );
-              }).toList(),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Text(
-                points.isNotEmpty ? points.first.dayLabel : "--/--",
-                style: const TextStyle(
-                  color: textSecondary,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 11,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                points.isNotEmpty ? points.last.dayLabel : "--/--",
-                style: const TextStyle(
-                  color: textSecondary,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 11,
-                ),
-              ),
-            ],
           ),
         ],
       ),
@@ -1288,7 +1354,6 @@ class _NewsCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: surfaceColor,
             borderRadius: BorderRadius.circular(16),
-            // ✅ Plus de bordure (border retiré)
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.2),
@@ -1335,7 +1400,6 @@ class _NewsCard extends StatelessWidget {
                         )
                       else
                         _NewsImageFallback(accent: accent),
-
                       DecoratedBox(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
@@ -1348,7 +1412,6 @@ class _NewsCard extends StatelessWidget {
                           ),
                         ),
                       ),
-
                       Positioned(
                         top: 10,
                         left: 10,
@@ -1386,7 +1449,6 @@ class _NewsCard extends StatelessWidget {
                   ),
                 ),
               ),
-
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
                 child: Column(
@@ -1493,16 +1555,4 @@ class _NewsImageFallback extends StatelessWidget {
       ),
     );
   }
-}
-
-class _DayPoint {
-  final String dayLabel;
-  final int value;
-  final bool isToday;
-
-  _DayPoint({
-    required this.dayLabel,
-    required this.value,
-    this.isToday = false,
-  });
 }

@@ -13,7 +13,7 @@ const Color darkBg = Color(0xFF0B0B0F);
 // =====================
 const TextStyle kScreenTitle = TextStyle(
   color: Colors.white,
-  fontSize: 16,
+  fontSize: 24,
   fontWeight: FontWeight.w900,
   fontStyle: FontStyle.italic,
   letterSpacing: 0.4,
@@ -87,11 +87,111 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
   }
 
   String _formatTime(int s) =>
-      "${(s ~/ 60).toString().padLeft(2, '0')}min ${(s % 60).toString().padLeft(2, '0')}s";
+      "${(s ~/ 60).toString().padLeft(2, '0')}:${(s % 60).toString().padLeft(2, '0')}";
+
+  // ✅ LOGIQUE D'IMAGE LOCALE (ASSETS)
+  String _getBackgroundImage() {
+    final name = widget.routineName.toLowerCase().trim();
+    if (name.contains("pec") ||
+        name.contains("chest") ||
+        name.contains("push")) {
+      return "assets/images/pecs.jpg";
+    }
+    if (name.contains("dos") ||
+        name.contains("back") ||
+        name.contains("pull")) {
+      return "assets/images/dos.jpg";
+    }
+    if (name.contains("jambe") ||
+        name.contains("leg") ||
+        name.contains("bas")) {
+      return "assets/images/jambes.jpg";
+    }
+    if (name.contains("bras") ||
+        name.contains("arm") ||
+        name.contains("biceps") ||
+        name.contains("triceps")) {
+      return "assets/images/bras.jpg";
+    }
+    if (name.contains("epaule") || name.contains("épaule")) {
+      return "assets/images/epaules.jpg";
+    }
+    if (name.contains("abdo") || name.contains("abs")) {
+      return "assets/images/abdos.jpg";
+    }
+    if (name.contains("cardio") || name.contains("run")) {
+      return "assets/images/cardio.jpg";
+    }
+    if (name.contains("mobil")) {
+      return "assets/images/mobilite.jpg";
+    }
+    if (name.contains("perte") || name.contains("poids")) {
+      return "assets/images/perte_poids.jpg";
+    }
+    if (name.contains("full") ||
+        name.contains("body") ||
+        name.contains("haut")) {
+      return "assets/images/fullbody.jpg";
+    }
+    return "assets/images/default.jpg";
+  }
+
+  void _showVideoDemo(String exerciseName) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1C1C22),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          "Démo : $exerciseName",
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              height: 200,
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
+              ),
+              child: const Center(
+                child: Icon(
+                  Icons.play_circle_fill_rounded,
+                  color: clubOrange,
+                  size: 64,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              "La vidéo de démonstration sera intégrée ici.",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white70),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text(
+              "FERMER",
+              style: TextStyle(color: clubOrange, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final manager = Provider.of<WorkoutManager>(context);
+    final bgImage = _getBackgroundImage();
 
     return Scaffold(
       backgroundColor: darkBg,
@@ -100,7 +200,7 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
           : CustomScrollView(
               physics: const BouncingScrollPhysics(),
               slivers: [
-                _buildSliverAppBar(manager),
+                _buildSliverAppBar(manager, bgImage),
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -120,18 +220,27 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
     );
   }
 
-  Widget _buildSliverAppBar(WorkoutManager manager) {
+  Widget _buildSliverAppBar(WorkoutManager manager, String bgImage) {
     return SliverAppBar(
-      expandedHeight: 240,
+      expandedHeight: 280,
       pinned: true,
       backgroundColor: darkBg,
       leading: IconButton(
-        icon: const Icon(Icons.close, color: Colors.white),
-        onPressed: () => Navigator.pop(context),
+        icon: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.4),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
+          ),
+          child: const Icon(Icons.close, color: Colors.white, size: 18),
+        ),
+        // ✅ CORRECTION ICI : Retour à l'accueil
+        onPressed: () => Navigator.popUntil(context, (route) => route.isFirst),
       ),
       actions: [
         Padding(
-          padding: const EdgeInsets.only(right: 12),
+          padding: const EdgeInsets.only(right: 16, top: 8),
           child: _buildTopFinishBtn(manager),
         ),
       ],
@@ -139,57 +248,82 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
         background: Stack(
           fit: StackFit.expand,
           children: [
-            Image.network(
-              "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?q=80&w=1000",
-              fit: BoxFit.cover,
-            ),
-            const DecoratedBox(
+            // ✅ GESTION IMAGE LOCALE
+            bgImage.startsWith('http')
+                ? Image.network(bgImage, fit: BoxFit.cover)
+                : Image.asset(bgImage, fit: BoxFit.cover),
+
+            // ✅ DÉGRADÉ PREMIUM PROFOND
+            DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Colors.black54, darkBg],
+                  colors: [
+                    Colors.black.withOpacity(0.3),
+                    darkBg.withOpacity(0.8),
+                    darkBg,
+                  ],
+                  stops: const [0.0, 0.6, 1.0],
                 ),
               ),
             ),
 
-            // ✅ TITRE / SOUS-TITRE (lisible, cohérent)
             SafeArea(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 56, 16, 0),
+                padding: const EdgeInsets.fromLTRB(20, 64, 20, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(widget.routineName.toUpperCase(), style: kScreenTitle),
-                    const SizedBox(height: 6),
-                    const Text("SUIVI DE SÉANCE", style: kLabelSmall),
                   ],
                 ),
               ),
             ),
 
-            // ✅ STATS en bas
+            // ✅ STATS MODERNISÉES
             Positioned(
-              bottom: 18,
-              left: 0,
-              right: 0,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _StatItem(
-                    label: "CHRONO",
-                    value: _formatTime(manager.seconds),
-                    valueColor: clubOrange,
-                  ),
-                  _StatItem(
-                    label: "VOLUME",
-                    value: "${manager.calculateTotalVolume().toInt()} kg",
-                  ),
-                  _StatItem(
-                    label: "SÉRIES",
-                    value: "${manager.totalCompletedSets}",
-                  ),
-                ],
+              bottom: 20,
+              left: 20,
+              right: 20,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _StatItem(
+                      label: "CHRONO",
+                      value: _formatTime(manager.seconds),
+                      valueColor: clubOrange,
+                      icon: Icons.timer_outlined,
+                    ),
+                    Container(
+                      width: 1,
+                      height: 40,
+                      color: Colors.white.withOpacity(0.1),
+                    ),
+                    _StatItem(
+                      label: "VOLUME",
+                      value: "${manager.calculateTotalVolume().toInt()} kg",
+                      icon: Icons.fitness_center_rounded,
+                    ),
+                    Container(
+                      width: 1,
+                      height: 40,
+                      color: Colors.white.withOpacity(0.1),
+                    ),
+                    _StatItem(
+                      label: "SÉRIES",
+                      value: "${manager.totalCompletedSets}",
+                      icon: Icons.layers_rounded,
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -200,23 +334,72 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
 
   Widget _buildExerciseSection(WorkoutManager manager, int exIndex) {
     final ex = manager.dynamicExercises[exIndex];
+    final exerciseName = ex['exercise']['name'].toString();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          ex['exercise']['name'].toString().toUpperCase(),
-          style: kSectionTitle,
+        // ✅ HEADER EXERCICE AVEC BOUTON VIDEO
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Text(exerciseName.toUpperCase(), style: kSectionTitle),
+            ),
+            GestureDetector(
+              onTap: () => _showVideoDemo(exerciseName),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withOpacity(0.2)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.play_circle_outline_rounded,
+                      color: clubOrange,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      "DÉMO",
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontWeight: FontWeight.w900,
+                        fontSize: 10,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         _buildLogHeader(),
+
+        // Conteneur des séries
         Container(
           decoration: BoxDecoration(
+            color: const Color(0xFF1C1C22),
             border: Border.all(
-              color: Colors.white.withOpacity(0.12),
-              width: 1.2,
+              color: Colors.white.withOpacity(0.05),
+              width: 1.5,
             ),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 10,
+                offset: const Offset(0, 5),
+              ),
+            ],
           ),
           child: Column(
             children: List.generate(
@@ -226,26 +409,27 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
                 exIndex,
                 setIndex,
                 ex['reps']?.toString() ?? "0",
+                isLast: setIndex == (ex['sets'] - 1),
               ),
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         _buildGlassActionBtn(
           "+ Ajouter une série",
-          clubOrange.withOpacity(0.14),
-          textColor: Colors.white,
+          clubOrange.withOpacity(0.15),
+          textColor: clubOrange,
           icon: Icons.add_rounded,
           onTap: () => manager.addNewSet(exIndex),
         ),
-        const SizedBox(height: 34),
+        const SizedBox(height: 40),
       ],
     );
   }
 
   Widget _buildLogHeader() {
     return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
           Expanded(flex: 1, child: Text("SÉRIE", style: kLabelSmall)),
@@ -267,8 +451,9 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
     WorkoutManager manager,
     int exIndex,
     int setIndex,
-    String defaultReps,
-  ) {
+    String defaultReps, {
+    required bool isLast,
+  }) {
     String prefix = "${exIndex}_$setIndex";
     bool isDone = manager.completedSets["${prefix}_done"] ?? false;
 
@@ -282,41 +467,45 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
             onPressed: (context) => manager.removeSet(exIndex, setIndex),
             backgroundColor: Colors.redAccent,
             foregroundColor: Colors.white,
-            icon: Icons.delete,
-            label: 'Supprimer',
+            icon: Icons.delete_outline_rounded,
+            borderRadius: isLast
+                ? const BorderRadius.only(bottomRight: Radius.circular(16))
+                : BorderRadius.zero,
           ),
         ],
       ),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
-          color: isDone
-              ? clubOrange.withOpacity(0.18)
-              : (setIndex % 2 == 0
-                    ? Colors.white.withOpacity(0.04)
-                    : Colors.transparent),
-          border: Border(
-            bottom: BorderSide(color: Colors.white.withOpacity(0.08)),
-          ),
+          color: isDone ? clubOrange.withOpacity(0.1) : Colors.transparent,
+          border: isLast
+              ? null
+              : Border(
+                  bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
+                ),
         ),
         child: Row(
           children: [
             Expanded(
               flex: 1,
-              child: Text(
-                "${setIndex + 1}",
-                style: TextStyle(
-                  color: isDone ? clubOrange : Colors.white,
-                  fontWeight: FontWeight.w900,
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: isDone ? clubOrange : Colors.white.withOpacity(0.05),
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  "${setIndex + 1}",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: isDone ? Colors.white : Colors.white70,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ),
-            Container(
-              width: 1,
-              height: 20,
-              color: Colors.white.withOpacity(0.05),
-              margin: const EdgeInsets.only(right: 8),
-            ),
+            const SizedBox(width: 12),
             const Expanded(flex: 2, child: Text("—", style: kMeta)),
             StableInput(
               initialValue: manager.workoutData["${prefix}_kg"] ?? "",
@@ -336,8 +525,8 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
               child: SizedBox(
                 width: 35,
                 child: Icon(
-                  isDone ? Icons.check_circle_rounded : Icons.radio_button_off,
-                  color: isDone ? clubOrange : Colors.white38,
+                  isDone ? Icons.check_circle_rounded : Icons.circle_outlined,
+                  color: isDone ? clubOrange : Colors.white24,
                   size: 28,
                 ),
               ),
@@ -357,8 +546,8 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
             Expanded(
               child: _buildGlassActionBtn(
                 "Paramètres",
-                Colors.white.withOpacity(0.08),
-                icon: Icons.settings,
+                Colors.white.withOpacity(0.05),
+                icon: Icons.settings_rounded,
                 onTap: () {},
               ),
             ),
@@ -366,11 +555,13 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
             Expanded(
               child: _buildGlassActionBtn(
                 "Abandonner",
-                Colors.redAccent.withOpacity(0.18),
-                icon: Icons.delete_outline,
+                Colors.redAccent.withOpacity(0.1),
+                textColor: Colors.redAccent,
+                icon: Icons.close_rounded,
                 onTap: () {
                   manager.stopWorkout();
-                  Navigator.pop(context);
+                  // ✅ CORRECTION ICI : Retour à l'accueil
+                  Navigator.popUntil(context, (route) => route.isFirst);
                 },
               ),
             ),
@@ -388,24 +579,24 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
     VoidCallback? onTap,
   }) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(16),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: InkWell(
           onTap: onTap,
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 14),
+            padding: const EdgeInsets.symmetric(vertical: 16),
             decoration: BoxDecoration(
               color: color,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white.withOpacity(0.14)),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: textColor.withOpacity(0.15)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (icon != null)
-                  Icon(icon, color: textColor.withOpacity(0.9), size: 16),
+                  Icon(icon, color: textColor.withOpacity(0.9), size: 18),
                 if (icon != null) const SizedBox(width: 8),
                 Text(
                   label.toUpperCase(),
@@ -426,12 +617,16 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
         await manager.finishWorkout(context);
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: clubOrange,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           boxShadow: [
-            BoxShadow(color: clubOrange.withOpacity(0.35), blurRadius: 12),
+            BoxShadow(
+              color: clubOrange.withOpacity(0.4),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
           ],
         ),
         child: const Text("TERMINER", style: kButtonText),
@@ -496,13 +691,14 @@ class _StableInputState extends State<StableInput> {
         margin: const EdgeInsets.only(right: 8),
         decoration: BoxDecoration(
           color: widget.isLocked
-              ? Colors.black45
-              : Colors.white.withOpacity(0.10),
-          borderRadius: BorderRadius.circular(8),
+              ? Colors.white.withOpacity(0.02)
+              : Colors.white.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: widget.isLocked
-                ? clubOrange.withOpacity(0.45)
-                : Colors.white.withOpacity(0.10),
+                ? clubOrange.withOpacity(0.3)
+                : Colors.white.withOpacity(0.15),
+            width: widget.isLocked ? 1.5 : 1,
           ),
         ),
         child: TextField(
@@ -513,14 +709,17 @@ class _StableInputState extends State<StableInput> {
           style: TextStyle(
             color: widget.isLocked ? clubOrange : Colors.white,
             fontWeight: FontWeight.w900,
-            fontSize: 14,
+            fontSize: 15,
           ),
           decoration: InputDecoration(
             isDense: true,
-            contentPadding: const EdgeInsets.symmetric(vertical: 8),
+            contentPadding: const EdgeInsets.symmetric(vertical: 10),
             border: InputBorder.none,
             hintText: widget.hint,
-            hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
+            hintStyle: TextStyle(
+              color: Colors.white.withOpacity(0.2),
+              fontSize: 13,
+            ),
           ),
           onChanged: (value) => widget.onChanged(value.isEmpty ? "0" : value),
         ),
@@ -532,27 +731,30 @@ class _StableInputState extends State<StableInput> {
 class _StatItem extends StatelessWidget {
   final String label, value;
   final Color valueColor;
+  final IconData icon;
 
   const _StatItem({
     required this.label,
     required this.value,
     this.valueColor = Colors.white,
+    required this.icon,
   });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
+        Icon(icon, color: Colors.white54, size: 16),
+        const SizedBox(height: 6),
         Text(
           value,
           style: TextStyle(
             color: valueColor,
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: FontWeight.w900,
           ),
         ),
-        const SizedBox(height: 2),
-        const Text("", style: TextStyle(fontSize: 0)), // garde l'espace stable
+        const SizedBox(height: 4),
         Text(label, style: kLabelSmall),
       ],
     );
