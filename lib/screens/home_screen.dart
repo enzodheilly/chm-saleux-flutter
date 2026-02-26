@@ -34,7 +34,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
-  String currentUserName = "ATHLÈTE";
+  // Valeur par défaut si non connecté ou en chargement
+  String currentUserName = "Mike Ryan";
   String? profileImageUrl;
 
   List<dynamic> allPrograms = [];
@@ -72,8 +73,39 @@ class _HomeScreenState extends State<HomeScreen> {
         profile = prof;
 
         if (prof != null) {
-          currentUserName = prof['firstName']?.toUpperCase() ?? "ATHLÈTE";
-          profileImageUrl = prof['profileImageUrl'];
+          // Astuce pour voir exactement ce que ton backend renvoie dans la console :
+          debugPrint("Profil reçu : $prof");
+
+          // 1. Récupération avec vérification de plusieurs clés possibles
+          final rawFirstName =
+              (prof['firstName'] ?? prof['firstname'] ?? prof['prenom'] ?? "")
+                  .toString()
+                  .trim();
+          final rawLastName =
+              (prof['lastName'] ??
+                      prof['lastname'] ??
+                      prof['name'] ??
+                      prof['nom'] ??
+                      "")
+                  .toString()
+                  .trim();
+
+          // 2. Fonction pour mettre la première lettre en majuscule et le reste en minuscule (ex: "ENZO" -> "Enzo")
+          String capitalize(String s) {
+            if (s.isEmpty) return "";
+            return s[0].toUpperCase() + s.substring(1).toLowerCase();
+          }
+
+          final firstName = capitalize(rawFirstName);
+          final lastName = capitalize(rawLastName);
+
+          final fullName = "$firstName $lastName".trim();
+
+          if (fullName.isNotEmpty) {
+            currentUserName = fullName;
+          }
+
+          profileImageUrl = prof['profileImageUrl'] ?? prof['avatar'];
         }
 
         allPrograms = programs;
@@ -99,6 +131,18 @@ class _HomeScreenState extends State<HomeScreen> {
       debugPrint("Erreur chargement news: $e");
       if (!mounted) return;
       setState(() => isNewsLoading = false);
+    }
+  }
+
+  // ✅ Message de bienvenue dynamique en FRANÇAIS
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      return "Bonjour.";
+    } else if (hour < 17) {
+      return "Bon après-midi.";
+    } else {
+      return "Bonsoir.";
     }
   }
 
@@ -302,15 +346,16 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: appBackground,
       body: SafeArea(
-        bottom: false, // <-- Crucial pour que la barre aille tout en bas
+        bottom: false,
         child: Column(
           children: [
             Container(
               color: navBarColor,
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
               child: _TopBar(
-                title: "chm saleux",
-                notifCount: 3,
+                userName: currentUserName,
+                greeting: _getGreeting(),
+                notifCount: 2,
                 userImage: profileImageUrl,
                 onProfileTap: () async {
                   await Navigator.push(
@@ -367,7 +412,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    // ✅ MODIFICATION ICI : On a retiré le SafeArea wrapper
                     child: _GlassBottomNav(
                       currentIndex: _selectedIndex,
                       onTap: (i) => setState(() => _selectedIndex = i),
@@ -581,7 +625,6 @@ class _GlassBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Permet de s'assurer que les icônes ne sont pas cachées par la petite barre iPhone en bas
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return ClipRRect(
@@ -712,14 +755,16 @@ class _NavItem extends StatelessWidget {
 }
 
 class _TopBar extends StatelessWidget {
-  final String title;
+  final String userName;
+  final String greeting;
   final int notifCount;
   final String? userImage;
   final VoidCallback onProfileTap;
   final VoidCallback onNotifTap;
 
   const _TopBar({
-    required this.title,
+    required this.userName,
+    required this.greeting,
     required this.notifCount,
     this.userImage,
     required this.onProfileTap,
@@ -729,31 +774,58 @@ class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         _CircleIcon(
           userImage: userImage,
           icon: Icons.person_outline,
           onTap: onProfileTap,
         ),
-        const Spacer(),
-        Text(
-          title.toUpperCase(),
-          style: const TextStyle(
-            color: textPrimary,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.8,
-            fontSize: 13,
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                greeting,
+                style: const TextStyle(
+                  color: textSecondary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                userName, // Affichage du nom complet directement, sans transformer en minuscules
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: textPrimary,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.2,
+                  fontSize: 20,
+                ),
+              ),
+            ],
           ),
         ),
-        const Spacer(),
-        Badge(
-          isLabelVisible: notifCount > 0,
-          backgroundColor: clubOrange,
-          textColor: Colors.white,
-          label: Text("$notifCount"),
-          child: _CircleIcon(
-            icon: Icons.notifications_none_rounded,
-            onTap: onNotifTap,
+        GestureDetector(
+          onTap: onNotifTap,
+          child: Badge(
+            isLabelVisible: notifCount > 0,
+            backgroundColor: const Color(0xFFE55B5B),
+            textColor: Colors.white,
+            label: Text("$notifCount"),
+            offset: const Offset(-2, 4),
+            child: const Padding(
+              padding: EdgeInsets.all(4.0),
+              child: Icon(
+                Icons.notifications_none_rounded,
+                color: Colors.white,
+                size: 28,
+              ),
+            ),
           ),
         ),
       ],
@@ -787,7 +859,6 @@ class _CircleIcon extends StatelessWidget {
         return NetworkImage(fixed);
       }
 
-      // sinon on suppose base64
       final raw = v.contains(',') ? v.split(',').last : v;
       return MemoryImage(base64Decode(raw));
     } catch (_) {
@@ -803,24 +874,17 @@ class _CircleIcon extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(999),
       child: Container(
-        width: 44,
-        height: 44,
+        width: 50,
+        height: 50,
         decoration: BoxDecoration(
           color: surfaceColor,
           shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
           image: imageProvider != null
               ? DecorationImage(image: imageProvider, fit: BoxFit.cover)
               : null,
         ),
         child: imageProvider == null
-            ? Center(child: Icon(icon, size: 20, color: textPrimary))
+            ? Center(child: Icon(icon, size: 24, color: textPrimary))
             : null,
       ),
     );
