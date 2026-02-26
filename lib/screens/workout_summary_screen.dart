@@ -64,22 +64,30 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
   String _getBannerImage(String routineName) {
     final name = routineName.toLowerCase().trim();
 
-    if (name.contains("pec") || name.contains("chest"))
+    if (name.contains("pec") || name.contains("chest")) {
       return "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=1200&q=80";
-    if (name.contains("dos") || name.contains("back"))
+    }
+    if (name.contains("dos") || name.contains("back")) {
       return "https://images.unsplash.com/photo-1603287681836-e54f0e4475ac?w=1200&q=80";
-    if (name.contains("jambe") || name.contains("leg"))
+    }
+    if (name.contains("jambe") || name.contains("leg")) {
       return "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=1200&q=80";
-    if (name.contains("bras") || name.contains("arm"))
+    }
+    if (name.contains("bras") || name.contains("arm")) {
       return "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=1200&q=80";
-    if (name.contains("epaule") || name.contains("shoulder"))
+    }
+    if (name.contains("epaule") || name.contains("shoulder")) {
       return "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=1200&q=80";
-    if (name.contains("abdo") || name.contains("abs"))
+    }
+    if (name.contains("abdo") || name.contains("abs")) {
       return "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=1200&q=80";
-    if (name.contains("cardio") || name.contains("run"))
+    }
+    if (name.contains("cardio") || name.contains("run")) {
       return "https://images.unsplash.com/photo-1538805060504-6335d7aa1b7e?w=1200&q=80";
-    if (name.contains("full") || name.contains("body"))
+    }
+    if (name.contains("full") || name.contains("body")) {
       return "https://images.unsplash.com/photo-1517963879466-e9b5ce3825bf?w=1200&q=80";
+    }
 
     return "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&q=80";
   }
