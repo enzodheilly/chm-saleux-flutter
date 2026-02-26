@@ -1,18 +1,21 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../services/auth_service.dart';
+// N'oublie pas d'importer ton système de niveau s'il est dans un autre fichier
+import '../utils/leveling_system.dart';
 
 // --- COULEURS STYLE iOS DARK MODE ---
-const Color appBackground = Color(0xFF000000); // Fond noir pur
-const Color cardColor = Color(0xFF141414); // Gris très foncé pour les cartes
-const Color dividerColor = Color(0xFF262626); // Lignes séparatrices
-const Color textSecondary = Color(0xFF8E8E93); // Gris typique iOS
-const Color clubOrange = Color(0xFFF57809); // Ton accent
+const Color appBackground = Color(0xFF000000);
+const Color cardColor = Color(0xFF1C1C1E); // Gris iOS standard
+const Color dividerColor = Color(0xFF2C2C2E);
+const Color textSecondary = Color(0xFF8E8E93);
+const Color clubOrange = Color(0xFFF57809);
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -33,10 +36,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isEditing = false;
   bool _autoValidate = false;
 
-  // Toggles factices pour le design
   bool _notificationsEnabled = true;
 
-  File? _pickedImageFile;
+  File? _pickedImageFile; // Pour l'avatar
+  File? _pickedBannerFile; // Pour la bannière (NOUVEAU)
 
   late final TextEditingController _firstNameCtrl;
   late final TextEditingController _lastNameCtrl;
@@ -45,6 +48,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _initialFirstName = '';
   String _initialLastName = '';
   String _initialPhone = '';
+
+  // --- Variables du Système de Niveau ---
+  int _totalXp = 0;
+  int _currentLevel = 1;
+  double _levelProgress = 0.0;
+  int _xpToNextLevel = 0;
 
   @override
   void initState() {
@@ -61,6 +70,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _lastNameCtrl.dispose();
     _phoneCtrl.dispose();
     super.dispose();
+  }
+
+  int _safeInt(dynamic value) {
+    if (value is int) return value;
+    if (value is double) return value.round();
+    if (value == null) return 0;
+    return int.tryParse(value.toString()) ?? 0;
   }
 
   Future<void> _loadProfile() async {
@@ -86,6 +102,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final lastName = (data?['lastName'] ?? data?['last_name'] ?? '').toString();
     final phone = (data?['phone'] ?? '').toString();
 
+    // Calcul de l'XP et du niveau
+    final xpRaw = data?['total_xp'] ?? data?['totalXp'] ?? 0;
+    _totalXp = _safeInt(xpRaw);
+
+    _currentLevel = math.max(1, LevelingSystem.getLevel(_totalXp));
+    _levelProgress = (LevelingSystem.getProgressToNextLevel(
+      _totalXp,
+    )).clamp(0.0, 1.0).toDouble();
+    _xpToNextLevel = math.max(0, LevelingSystem.getXpToNextLevel(_totalXp));
+
     _initialFirstName = firstName;
     _initialLastName = lastName;
     _initialPhone = phone;
@@ -95,15 +121,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _phoneCtrl.text = phone;
 
     _pickedImageFile = null;
+    _pickedBannerFile = null; // Reset de la bannière
   }
 
   void _toggleEditMode() {
     if (_isEditing) {
-      // Annuler les modifications si on quitte sans sauvegarder
       _firstNameCtrl.text = _initialFirstName;
       _lastNameCtrl.text = _initialLastName;
       _phoneCtrl.text = _initialPhone;
       _pickedImageFile = null;
+      _pickedBannerFile = null;
     }
     setState(() {
       _isEditing = !_isEditing;
@@ -118,22 +145,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _phoneCtrl.text.trim() != _initialPhone.trim();
 
     final photoChanged = _pickedImageFile != null;
+    final bannerChanged = _pickedBannerFile != null; // NOUVEAU
 
-    return textChanged || photoChanged;
+    return textChanged || photoChanged || bannerChanged;
   }
 
+  // Pick AVATAR
   Future<void> _pickProfileImage() async {
     if (!_isEditing) return;
-
     try {
       final XFile? file = await _picker.pickImage(
         source: ImageSource.gallery,
         imageQuality: 85,
-        maxWidth: 1400,
+        maxWidth: 1000,
       );
-
       if (file == null) return;
-
       setState(() {
         _pickedImageFile = File(file.path);
       });
@@ -142,9 +168,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  // Pick BANNIÈRE (NOUVEAU)
+  Future<void> _pickBannerImage() async {
+    if (!_isEditing) return;
+    try {
+      final XFile? file = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 1600, // Plus large car c'est une bannière
+      );
+      if (file == null) return;
+      setState(() {
+        _pickedBannerFile = File(file.path);
+      });
+    } catch (e) {
+      debugPrint("Erreur sélection bannière: $e");
+    }
+  }
+
   Future<void> _saveProfile() async {
     FocusScope.of(context).unfocus();
-
     setState(() => _autoValidate = true);
     if (!_formKey.currentState!.validate()) return;
 
@@ -174,6 +217,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       _profile = {...?_profile, ...updatedText};
 
+      // Upload Avatar
       if (_pickedImageFile != null) {
         final updatedPhoto = await _authService.uploadProfileImage(
           _pickedImageFile!,
@@ -181,6 +225,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (updatedPhoto != null) {
           _profile = {...?_profile, ...updatedPhoto};
         }
+      }
+
+      // Upload Bannière (NOUVEAU - À adapter selon ton AuthService)
+      if (_pickedBannerFile != null) {
+        // NOTE: Il te faudra créer cette méthode dans AuthService si elle n'existe pas
+        // final updatedBanner = await _authService.uploadBannerImage(_pickedBannerFile!);
+        // if (updatedBanner != null) _profile = {...?_profile, ...updatedBanner};
+        debugPrint(
+          "Image de bannière prête à être uploadée : ${_pickedBannerFile!.path}",
+        );
       }
 
       _hydrateControllersFromProfile(_profile);
@@ -207,10 +261,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  // Construit l'image pour l'Avatar
   ImageProvider? _buildAvatarProvider() {
-    if (_pickedImageFile != null) {
-      return FileImage(_pickedImageFile!);
-    }
+    if (_pickedImageFile != null) return FileImage(_pickedImageFile!);
 
     final raw =
         (_profile?['profileImageUrl'] ??
@@ -219,25 +272,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 '')
             .toString()
             .trim();
-
     if (raw.isEmpty) return null;
 
     try {
-      if (raw.startsWith('http://') || raw.startsWith('https://')) {
-        return NetworkImage(raw);
-      }
-      if (raw.startsWith('data:image')) {
-        final base64Part = raw.split(',').last;
-        return MemoryImage(base64Decode(base64Part));
-      }
-      if (raw.length > 80) {
-        return MemoryImage(base64Decode(raw));
-      }
+      if (raw.startsWith('http')) return NetworkImage(raw);
+      if (raw.startsWith('data:image'))
+        return MemoryImage(base64Decode(raw.split(',').last));
+      if (raw.length > 80) return MemoryImage(base64Decode(raw));
     } catch (e) {
       debugPrint("Erreur decode avatar: $e");
     }
-
     return null;
+  }
+
+  // Construit l'image pour la Bannière (NOUVEAU)
+  ImageProvider _buildBannerProvider() {
+    if (_pickedBannerFile != null) return FileImage(_pickedBannerFile!);
+
+    final raw =
+        (_profile?['bannerImageUrl'] ?? _profile?['banner_image_url'] ?? '')
+            .toString()
+            .trim();
+    if (raw.isNotEmpty) {
+      try {
+        if (raw.startsWith('http')) return NetworkImage(raw);
+        if (raw.startsWith('data:image'))
+          return MemoryImage(base64Decode(raw.split(',').last));
+        if (raw.length > 80) return MemoryImage(base64Decode(raw));
+      } catch (e) {
+        debugPrint("Erreur decode banner: $e");
+      }
+    }
+
+    // IMAGE PAR DÉFAUT SI RIEN N'EST CONFIGURÉ
+    return const AssetImage('assets/images/default.jpg');
   }
 
   @override
@@ -304,64 +372,83 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 physics: const BouncingScrollPhysics(),
                 padding: const EdgeInsets.only(bottom: 60),
                 children: [
-                  const SizedBox(height: 10),
+                  // ===================
+                  // HEADER : BANNIÈRE + AVATAR + XP
+                  // ===================
+                  _buildProfileHeader(),
+
+                  const SizedBox(height: 20),
 
                   // ===================
-                  // AVATAR
+                  // SECTION : PROGRESSION
                   // ===================
-                  Center(
-                    child: Stack(
-                      children: [
-                        Container(
-                          width: 90,
-                          height: 90,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: cardColor,
-                            image: _buildAvatarProvider() != null
-                                ? DecorationImage(
-                                    image: _buildAvatarProvider()!,
-                                    fit: BoxFit.cover,
-                                  )
-                                : null,
-                          ),
-                          child: _buildAvatarProvider() == null
-                              ? const Icon(
-                                  Icons.person,
-                                  size: 40,
-                                  color: textSecondary,
-                                )
-                              : null,
+                  _buildSectionTitle("PROGRESSION"),
+                  _buildCardGroup(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
                         ),
-                        if (_isEditing)
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: GestureDetector(
-                              onTap: _pickProfileImage,
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF2C2C2E),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: appBackground,
-                                    width: 2,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.star_rounded,
+                                      color: clubOrange,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      "Niveau $_currentLevel",
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                  "$_totalXp XP",
+                                  style: const TextStyle(
+                                    color: textSecondary,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                child: const Icon(
-                                  Icons.camera_alt,
-                                  size: 14,
-                                  color: Colors.white,
-                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: _levelProgress,
+                                backgroundColor: dividerColor,
+                                color: clubOrange,
+                                minHeight: 6,
                               ),
                             ),
-                          ),
-                      ],
-                    ),
+                            const SizedBox(height: 10),
+                            Text(
+                              "+$_xpToNextLevel XP avant le niveau ${_currentLevel + 1}",
+                              style: const TextStyle(
+                                color: textSecondary,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
 
                   // ===================
                   // SECTION : MON COMPTE
@@ -402,7 +489,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 24),
 
                   // ===================
-                  // SECTION : PRÉFÉRENCES (Design factice basé sur ta capture)
+                  // SECTION : PRÉFÉRENCES
                   // ===================
                   _buildSectionTitle("PRÉFÉRENCES"),
                   _buildCardGroup(
@@ -432,7 +519,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 24),
 
                   // ===================
-                  // SECTION : INFORMATION (Design factice)
+                  // SECTION : INFORMATION
                   // ===================
                   _buildSectionTitle("INFORMATION"),
                   _buildCardGroup(
@@ -456,13 +543,173 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 60),
                 ],
               ),
             ),
     );
   }
 
-  // --- WIDGETS FACTORY ---
+  // ==========================================
+  // WIDGET: HEADER (Banner + Avatar + Nom)
+  // ==========================================
+  Widget _buildProfileHeader() {
+    const double bannerHeight = 140.0;
+    const double avatarSize = 96.0;
+    const double ringSize = avatarSize + 10.0;
+    const double overlap = avatarSize / 2;
+
+    final fullName = [
+      _firstNameCtrl.text.trim(),
+      _lastNameCtrl.text.trim(),
+    ].where((e) => e.isNotEmpty).join(' ');
+
+    return SizedBox(
+      height: bannerHeight + overlap + (fullName.isNotEmpty ? 40 : 10),
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.topCenter,
+        children: [
+          // 1. BANNIÈRE
+          Stack(
+            children: [
+              Container(
+                height: bannerHeight,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  image: DecorationImage(
+                    image: _buildBannerProvider(),
+                    fit: BoxFit.cover,
+                  ),
+                  border: const Border(
+                    bottom: BorderSide(color: dividerColor, width: 0.5),
+                  ),
+                ),
+              ),
+              // Voile sombre subtil pour améliorer la lisibilité du bouton Edit
+              Container(
+                height: bannerHeight,
+                width: double.infinity,
+                color: Colors.black.withOpacity(0.2),
+              ),
+              // Bouton Caméra pour la Bannière (Mode édition)
+              if (_isEditing)
+                Positioned(
+                  top: 16,
+                  right: 16,
+                  child: GestureDetector(
+                    onTap: _pickBannerImage,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2C2C2E).withOpacity(0.8),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt,
+                        size: 18,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+
+          // 2. AVATAR ET XP RING
+          Positioned(
+            top: bannerHeight - (ringSize / 2),
+            child: Column(
+              children: [
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Anneau XP
+                    SizedBox(
+                      width: ringSize,
+                      height: ringSize,
+                      child: CircularProgressIndicator(
+                        value: _levelProgress,
+                        strokeWidth: 4.0,
+                        backgroundColor: dividerColor,
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          clubOrange,
+                        ),
+                      ),
+                    ),
+                    // Photo
+                    Container(
+                      width: avatarSize,
+                      height: avatarSize,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: cardColor,
+                        border: Border.all(color: appBackground, width: 3.5),
+                        image: _buildAvatarProvider() != null
+                            ? DecorationImage(
+                                image: _buildAvatarProvider()!,
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                      ),
+                      child: _buildAvatarProvider() == null
+                          ? const Icon(
+                              Icons.person,
+                              size: 44,
+                              color: textSecondary,
+                            )
+                          : null,
+                    ),
+                    // Bouton Caméra pour l'Avatar (Mode édition)
+                    if (_isEditing)
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: GestureDetector(
+                          onTap: _pickProfileImage,
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2C2C2E),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: appBackground,
+                                width: 2.5,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt,
+                              size: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                // NOM COMPLET SOUS L'AVATAR
+                if (fullName.isNotEmpty && !_isEditing) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    fullName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- WIDGETS FACTORY UTILS ---
 
   Widget _buildSectionTitle(String title) {
     return Padding(
@@ -484,7 +731,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Column(children: children),
     );
@@ -495,12 +742,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       height: 1,
       thickness: 1,
       color: dividerColor,
-      indent: 48, // Aligné avec le texte, après l'icône
+      indent: 48,
       endIndent: 0,
     );
   }
 
-  // Ligne de paramètre éditable (Texte ou TextField)
   Widget _buildSettingsRow({
     required IconData icon,
     required String label,
@@ -569,7 +815,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Ligne statique (non éditable, avec une icône chevron à la fin)
   Widget _buildReadonlyRow({
     required IconData icon,
     required String label,
@@ -577,7 +822,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }) {
     return InkWell(
       onTap: () {},
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(10),
       child: Container(
         height: 54,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -625,7 +870,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Ligne avec un Switch iOS
   Widget _buildSwitchRow({
     required IconData icon,
     required String label,
@@ -651,8 +895,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           CupertinoSwitch(
             value: value,
-            activeColor:
-                clubOrange, // Ou Color(0xFF34C759) pour le vrai vert iOS
+            activeColor: clubOrange,
             onChanged: onChanged,
           ),
         ],
