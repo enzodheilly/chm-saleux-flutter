@@ -89,35 +89,6 @@ class _ProgressScreenState extends State<ProgressScreen>
     return bars;
   }
 
-  List<_BadgeModel> _buildBadges({
-    required int sessionsCount,
-    required double totalVolume,
-  }) {
-    return [
-      _BadgeModel(
-        title: "SÉRIE",
-        subtitle: sessionsCount >= 3 ? "On fire! 🔥" : "Obj: 3",
-        icon: Icons.local_fire_department_rounded,
-        isUnlocked: sessionsCount >= 3,
-        color: clubOrange,
-      ),
-      _BadgeModel(
-        title: "RÉGULIER",
-        subtitle: sessionsCount >= 8 ? "Machine 🤖" : "Obj: 8",
-        icon: Icons.auto_graph_rounded,
-        isUnlocked: sessionsCount >= 8,
-        color: Colors.greenAccent,
-      ),
-      _BadgeModel(
-        title: "VOLUME",
-        subtitle: totalVolume >= 10000 ? "Titan 🦍" : "Obj: 10T",
-        icon: Icons.fitness_center_rounded,
-        isUnlocked: totalVolume >= 10000,
-        color: Colors.blueAccent,
-      ),
-    ];
-  }
-
   void _cycleRange() {
     setState(() {
       if (rangeDays == 7) {
@@ -234,10 +205,6 @@ class _ProgressScreenState extends State<ProgressScreen>
 
         final sessions = data.sessions;
         final bars = _buildBarsFromSessions(sessions);
-        final badges = _buildBadges(
-          sessionsCount: sessionsCount,
-          totalVolume: totalVolume,
-        );
 
         final durationLabel = _formatDuration(totalDuration);
         final durationValue = durationLabel.contains('h')
@@ -259,27 +226,6 @@ class _ProgressScreenState extends State<ProgressScreen>
               ),
               const SizedBox(height: 12),
               _AnimatedChartCard(bars: bars),
-
-              const SizedBox(height: 32),
-
-              _SectionHeaderWithAction(
-                title: "PALMARÈS RÉCENT",
-                icon: Icons.shield_moon_outlined,
-                actionText: "Voir tout",
-                onAction: () {
-                  // TODO: Navigation vers tous les trophées
-                },
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                height: 160,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: badges.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 16),
-                  itemBuilder: (_, i) => _TrophyCard(model: badges[i]),
-                ),
-              ),
 
               const SizedBox(height: 32),
 
@@ -636,83 +582,6 @@ class _StatRowTile extends StatelessWidget {
   }
 }
 
-class _TrophyCard extends StatelessWidget {
-  final _BadgeModel model;
-  const _TrophyCard({required this.model});
-
-  @override
-  Widget build(BuildContext context) {
-    final active = model.isUnlocked;
-    return SizedBox(
-      width: 100,
-      child: Column(
-        children: [
-          Container(
-            width: 76,
-            height: 84,
-            decoration: BoxDecoration(
-              color: active
-                  ? model.color.withOpacity(0.15)
-                  : Colors.white.withOpacity(0.03),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(24),
-                topRight: Radius.circular(24),
-                bottomLeft: Radius.circular(40),
-                bottomRight: Radius.circular(40),
-              ),
-              border: Border.all(
-                color: active
-                    ? model.color.withOpacity(0.5)
-                    : Colors.white.withOpacity(0.05),
-                width: 2,
-              ),
-              boxShadow: active
-                  ? [
-                      BoxShadow(
-                        color: model.color.withOpacity(0.2),
-                        blurRadius: 16,
-                        offset: const Offset(0, 8),
-                      ),
-                    ]
-                  : [],
-            ),
-            child: Center(
-              child: Icon(
-                model.icon,
-                color: active ? model.color : Colors.white24,
-                size: 38,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            model.title,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            style: TextStyle(
-              color: active ? Colors.white : Colors.white.withOpacity(0.4),
-              fontWeight: FontWeight.w900,
-              fontSize: 11,
-              letterSpacing: 0.2,
-              height: 1.1,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            model.subtitle,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: active ? Colors.white54 : Colors.white24,
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _ModernSessionTile extends StatelessWidget {
   final String date;
   final String title;
@@ -872,51 +741,6 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _SectionHeaderWithAction extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final String actionText;
-  final VoidCallback onAction;
-
-  const _SectionHeaderWithAction({
-    required this.title,
-    required this.icon,
-    required this.actionText,
-    required this.onAction,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: clubOrange),
-        const SizedBox(width: 8),
-        Text(
-          title.toUpperCase(),
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.75),
-            fontWeight: FontWeight.w900,
-            fontSize: 12,
-            letterSpacing: 1.1,
-          ),
-        ),
-        const Spacer(),
-        GestureDetector(
-          onTap: onAction,
-          child: Text(
-            actionText,
-            style: const TextStyle(
-              color: clubOrange,
-              fontWeight: FontWeight.w900,
-              fontSize: 11,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   final TabBar _tabBar;
   _SliverAppBarDelegate(this._tabBar);
@@ -948,20 +772,4 @@ class _ProgressData {
   final Map<String, dynamic>? stats;
   final List<dynamic> sessions;
   _ProgressData({required this.stats, required this.sessions});
-}
-
-class _BadgeModel {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final bool isUnlocked;
-  final Color color;
-
-  _BadgeModel({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.isUnlocked,
-    this.color = Colors.white,
-  });
 }
