@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'routine_service.dart';
-import '../screens/workout_summary_screen.dart'; // ✅ Assure-toi que ce fichier existe
+import '../screens/workout_summary_screen.dart';
 
 class WorkoutManager extends ChangeNotifier {
   bool _isActive = false;
@@ -20,12 +20,15 @@ class WorkoutManager extends ChangeNotifier {
 
   void startOrResumeWorkout(int id, String name, List<dynamic> exercises) {
     if (_isActive && routineId == id) return;
+
     _isActive = true;
     routineId = id;
     routineName = name;
+
     if (dynamicExercises.isEmpty) {
       dynamicExercises = List.from(exercises);
     }
+
     _startTimer();
     notifyListeners();
   }
@@ -44,14 +47,16 @@ class WorkoutManager extends ChangeNotifier {
     List<Map<String, dynamic>> exercisesPayload = [];
 
     for (int i = 0; i < dynamicExercises.length; i++) {
-      var ex = dynamicExercises[i];
+      final ex = dynamicExercises[i];
       List<Map<String, dynamic>> validSets = [];
-      int totalSetsCount = ex['sets'] ?? 0;
+      final int totalSetsCount = ex['sets'] ?? 0;
 
       for (int j = 0; j < totalSetsCount; j++) {
-        String key = "${i}_${j}_done";
-        if (completedSets[key] == true) {
-          String prefix = "${i}_$j";
+        final String doneKey = "${i}_${j}_done";
+
+        if (completedSets[doneKey] == true) {
+          final String prefix = "${i}_$j";
+
           validSets.add({
             "exercise_id": ex['exercise']['id'],
             "weight":
@@ -71,28 +76,33 @@ class WorkoutManager extends ChangeNotifier {
 
     final sessionData = {
       "routine_id": routineId,
+      "routine_name": routineName,
       "duration_seconds": _seconds,
       "total_volume": calculateTotalVolume(),
+
+      // ✅ Nouvelle clé attendue par ton backend
+      "total_completed_sets": totalCompletedSets,
+
+      // ✅ On garde aussi l’ancienne pour compatibilité éventuelle
       "total_sets": totalCompletedSets,
+
       "performed_at": DateTime.now().toIso8601String(),
-      "routine_name": routineName,
       "exercises": exercisesPayload,
     };
 
     print("🚀 MANAGER : Envoi au RoutineService...");
-    bool success = await RoutineService().saveWorkoutSession(sessionData);
+    print("📦 SessionData: $sessionData");
+
+    final bool success = await RoutineService().saveWorkoutSession(sessionData);
 
     if (success) {
       print("✅ MANAGER : Sauvegarde réussie !");
 
-      // ✅ Préparation des données pour le récapitulatif avant le reset
       final summaryStats = Map<String, dynamic>.from(sessionData);
 
-      // Réinitialisation du manager
       stopWorkout();
 
       if (context.mounted) {
-        // ✅ Redirection vers la page récapitulative
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -131,24 +141,30 @@ class WorkoutManager extends ChangeNotifier {
 
   void removeSet(int exIndex, int setIndex) {
     dynamicExercises[exIndex]['sets']--;
-    String prefix = "${exIndex}_$setIndex";
+
+    final String prefix = "${exIndex}_$setIndex";
     workoutData.remove("${prefix}_kg");
     workoutData.remove("${prefix}_reps");
     completedSets.remove("${prefix}_done");
+
     notifyListeners();
   }
 
   double calculateTotalVolume() {
     double volume = 0;
+
     completedSets.forEach((key, isDone) {
       if (isDone) {
-        String prefix = key.replaceFirst('_done', '');
-        double kg = double.tryParse(workoutData['${prefix}_kg'] ?? '0') ?? 0;
-        double reps =
+        final String prefix = key.replaceFirst('_done', '');
+        final double kg =
+            double.tryParse(workoutData['${prefix}_kg'] ?? '0') ?? 0;
+        final double reps =
             double.tryParse(workoutData['${prefix}_reps'] ?? '0') ?? 0;
+
         volume += (kg * reps);
       }
     });
+
     return volume;
   }
 
@@ -157,6 +173,7 @@ class WorkoutManager extends ChangeNotifier {
     _isActive = false;
     _seconds = 0;
     routineId = null;
+    routineName = null;
     dynamicExercises = [];
     workoutData = {};
     completedSets = {};

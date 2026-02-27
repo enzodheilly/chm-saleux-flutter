@@ -149,7 +149,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     Set<String> sessionDates = {};
     for (var session in lastSessions) {
-      // ✅ Ajout de performed_at pour la compatibilité avec la base de données
       String? dateStr =
           session['date'] ??
           session['createdAt'] ??
@@ -210,10 +209,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // =========================================================
-  // ✅ HELPERS
-  // =========================================================
-
   String? _resolveBackendImageUrl(dynamic rawValue) {
     if (rawValue == null) return null;
     final raw = rawValue.toString().trim();
@@ -260,7 +255,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (name.contains("bras") || name.contains("biceps")) {
       return "assets/images/bras.jpg";
     }
-    // ✅ Vérification avec accent et au singulier
     if (name.contains("epaule") || name.contains("épaule")) {
       return "assets/images/epaules.jpg";
     }
@@ -391,9 +385,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ==========================================
-  // 🟢 SYSTÈME D'ONGLETS
-  // ==========================================
   Widget _buildHomeTabs() {
     return DefaultTabController(
       length: 2,
@@ -449,7 +440,6 @@ class _HomeScreenState extends State<HomeScreen> {
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(0, 0, 0, 140),
       children: [
-        // ✅ 1. CALENDRIER AVEC LES RONDS SUR FOND TRANSPARENT
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: _CircleCalendarTransparent(
@@ -459,10 +449,13 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 24),
 
-        // 2. BLOC : STATISTIQUES RÉCENTES
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0),
-          child: _RecentStatsCard(),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: _RecentStatsCard(
+            sessions: lastSessions,
+            profile: profile,
+            isLoading: isLoading,
+          ),
         ),
         const SizedBox(height: 32),
 
@@ -501,7 +494,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             averageTime: item["averageTime"].toString(),
                             level: item["level"].toString(),
                             imgUrl: item["imgUrl"].toString(),
-                            // ✅ Ajouts pour l'icône favoris :
                             routineId: item["routineId"] as int,
                             isFavorite: _favoriteRoutineIds.contains(
                               item["routineId"] as int,
@@ -771,7 +763,6 @@ class _CircleIcon extends StatelessWidget {
   }
 }
 
-// ✅ 1. CALENDRIER AVEC LES RONDS (Connecté et Dynamique)
 class _CircleCalendarTransparent extends StatelessWidget {
   final List<Map<String, dynamic>> weekDays;
   final bool isLoading;
@@ -831,7 +822,7 @@ class _CircleDayBlock extends StatelessWidget {
         break;
       case _DayState.missed:
       case _DayState.future:
-        bgColor = Colors.white.withOpacity(0.08); // Gris foncé
+        bgColor = Colors.white.withOpacity(0.08);
         textColor = textSecondary.withOpacity(0.8);
         break;
       case _DayState.today:
@@ -854,7 +845,7 @@ class _CircleDayBlock extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         Container(
-          width: 32, // Taille du rond ajustée
+          width: 32,
           height: 32,
           decoration: BoxDecoration(
             color: bgColor,
@@ -878,17 +869,198 @@ class _CircleDayBlock extends StatelessWidget {
 }
 
 class _RecentStatsCard extends StatelessWidget {
-  const _RecentStatsCard();
+  final List<dynamic> sessions;
+  final Map<String, dynamic>? profile;
+  final bool isLoading;
+
+  const _RecentStatsCard({
+    required this.sessions,
+    required this.profile,
+    required this.isLoading,
+  });
+
+  int _toInt(dynamic v) {
+    if (v is int) return v;
+    if (v is double) return v.round();
+    if (v == null) return 0;
+    return int.tryParse(v.toString()) ?? 0;
+  }
+
+  double _toDouble(dynamic v) {
+    if (v is double) return v;
+    if (v is int) return v.toDouble();
+    if (v == null) return 0;
+    return double.tryParse(v.toString()) ?? 0;
+  }
+
+  DateTime? _extractSessionDate(dynamic rawSession) {
+    if (rawSession is! Map<String, dynamic>) return null;
+
+    final rawDate =
+        rawSession['performed_at'] ??
+        rawSession['date'] ??
+        rawSession['createdAt'] ??
+        rawSession['completedAt'];
+
+    if (rawDate == null) return null;
+
+    try {
+      return DateTime.parse(rawDate.toString()).toLocal();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  int _extractDurationSeconds(dynamic rawSession) {
+    if (rawSession is! Map<String, dynamic>) return 0;
+
+    return _toInt(
+      rawSession['duration_seconds'] ??
+          rawSession['durationSeconds'] ??
+          rawSession['duration'] ??
+          0,
+    );
+  }
+
+  int _extractCalories(dynamic rawSession) {
+    if (rawSession is! Map<String, dynamic>) return 0;
+
+    return _toInt(
+      rawSession['calories_burned'] ??
+          rawSession['caloriesBurned'] ??
+          rawSession['calories'] ??
+          rawSession['kcal'] ??
+          0,
+    );
+  }
+
+  double _extractVolume(dynamic rawSession) {
+    if (rawSession is! Map<String, dynamic>) return 0;
+
+    return _toDouble(
+      rawSession['total_volume'] ?? rawSession['totalVolume'] ?? 0,
+    );
+  }
+
+  int _extractTotalSets(dynamic rawSession) {
+    if (rawSession is! Map<String, dynamic>) return 0;
+
+    return _toInt(
+      rawSession['total_sets'] ??
+          rawSession['totalCompletedSets'] ??
+          rawSession['total_completed_sets'] ??
+          rawSession['completed_sets'] ??
+          0,
+    );
+  }
+
+  String _formatDuration(int totalSeconds) {
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+
+    if (hours > 0) {
+      return "${hours}h ${minutes.toString().padLeft(2, '0')}m";
+    }
+    return "${minutes}m";
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [clubOrange, Color(0xFFC45000)],
+          ),
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: const SizedBox(
+          height: 150,
+          child: Center(child: CircularProgressIndicator(color: Colors.white)),
+        ),
+      );
+    }
+
+    final now = DateTime.now();
+    final monday = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(Duration(days: now.weekday - 1));
+    final nextMonday = monday.add(const Duration(days: 7));
+
+    final weeklySessions = sessions.where((raw) {
+      final dt = _extractSessionDate(raw);
+      if (dt == null) return false;
+      return !dt.isBefore(monday) && dt.isBefore(nextMonday);
+    }).toList();
+
+    final List<int> sessionsByDay = List.filled(7, 0);
+
+    for (final raw in weeklySessions) {
+      final dt = _extractSessionDate(raw);
+      if (dt == null) continue;
+      final index = dt.weekday - 1; // lundi=0
+      if (index >= 0 && index < 7) {
+        sessionsByDay[index]++;
+      }
+    }
+
+    final int completedSessions = weeklySessions.length;
+
+    final int totalDurationSeconds = weeklySessions.fold<int>(
+      0,
+      (sum, raw) => sum + _extractDurationSeconds(raw),
+    );
+
+    final int totalCalories = weeklySessions.fold<int>(
+      0,
+      (sum, raw) => sum + _extractCalories(raw),
+    );
+
+    final double totalVolume = weeklySessions.fold<double>(
+      0,
+      (sum, raw) => sum + _extractVolume(raw),
+    );
+
+    final int totalSets = weeklySessions.fold<int>(
+      0,
+      (sum, raw) => sum + _extractTotalSets(raw),
+    );
+
+    final int sessionsWithCalories = weeklySessions.where((raw) {
+      return _extractCalories(raw) > 0;
+    }).length;
+
+    final String timeLabel = _formatDuration(totalDurationSeconds);
+    final String sessionsLabel = "$completedSessions";
+    final String setsLabel = "$totalSets";
+
+    final bool hasCalories = sessionsWithCalories > 0;
+    final String thirdValue = hasCalories
+        ? "${(totalCalories / sessionsWithCalories).round()} kcal"
+        : "${totalVolume.toInt()} kg";
+    final String thirdLabel = hasCalories ? "CALORIES (MOY.)" : "VOLUME TOTAL";
+
+    final int maxDayCount = sessionsByDay.every((e) => e == 0)
+        ? 1
+        : sessionsByDay.reduce((a, b) => a > b ? a : b);
+
+    double barHeightFor(int count) {
+      if (count <= 0) return 20;
+      return 20 + ((count / maxDayCount) * 40);
+    }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [clubOrange, const Color(0xFFC45000)],
+          colors: [clubOrange, Color(0xFFC45000)],
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
@@ -930,20 +1102,23 @@ class _RecentStatsCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
+
+                    // ✅ Version responsive : plus d'overflow
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
-                      children: const [
-                        _MiniBar(height: 50, isActive: true),
-                        SizedBox(width: 8),
-                        _MiniBar(height: 35, isActive: true),
-                        SizedBox(width: 8),
-                        _MiniBar(height: 60, isActive: true),
-                        SizedBox(width: 8),
-                        _MiniBar(height: 40, isActive: false),
-                        SizedBox(width: 8),
-                        _MiniBar(height: 20, isActive: false),
-                      ],
+                      children: List.generate(7, (index) {
+                        return Expanded(
+                          child: Align(
+                            alignment: Alignment.bottomCenter,
+                            child: _MiniBar(
+                              height: barHeightFor(sessionsByDay[index]),
+                              isActive: sessionsByDay[index] > 0,
+                            ),
+                          ),
+                        );
+                      }),
                     ),
+
                     const SizedBox(height: 16),
                     Row(
                       children: [
@@ -963,16 +1138,16 @@ class _RecentStatsCard extends StatelessWidget {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              "3/5",
-                              style: TextStyle(
+                            Text(
+                              setsLabel,
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
                             Text(
-                              "SÉANCES TERMINÉES",
+                              "SÉRIES RÉALISÉES",
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.85),
                                 fontSize: 10,
@@ -986,36 +1161,35 @@ class _RecentStatsCard extends StatelessWidget {
                   ],
                 ),
               ),
-
               Container(
                 width: 1,
                 height: 120,
                 color: Colors.white.withOpacity(0.25),
                 margin: const EdgeInsets.symmetric(horizontal: 16),
               ),
-
               Expanded(
                 flex: 4,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
+                  children: [
                     _StatCounter(
                       icon: Icons.access_time_filled_rounded,
-                      value: "4h 15m",
+                      value: timeLabel,
                       label: "TEMPS TOTAL",
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     _StatCounter(
                       icon: Icons.check_circle_rounded,
-                      value: "3/5",
-                      label: "SÉANCES",
+                      value: sessionsLabel,
+                      label: "SÉANCES CETTE SEMAINE",
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     _StatCounter(
-                      icon: Icons.local_fire_department_rounded,
-                      value: "680 kcal",
-                      label: "CALORIES (MOY.)",
+                      icon: hasCalories
+                          ? Icons.local_fire_department_rounded
+                          : Icons.fitness_center_rounded,
+                      value: thirdValue,
+                      label: thirdLabel,
                     ),
                   ],
                 ),
@@ -1037,7 +1211,7 @@ class _MiniBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 18,
+      width: 16,
       height: height,
       decoration: BoxDecoration(
         color: isActive ? purpleButton : Colors.white.withOpacity(0.3),
@@ -1072,27 +1246,36 @@ class _StatCounter extends StatelessWidget {
           child: Icon(icon, color: purpleButton, size: 14),
         ),
         const SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  value,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ),
-            ),
-            Text(
-              label,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.85),
-                fontSize: 10,
-                letterSpacing: 0.5,
-                fontWeight: FontWeight.w600,
+              Text(
+                label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.85),
+                  fontSize: 10,
+                  letterSpacing: 0.5,
+                  fontWeight: FontWeight.w600,
+                  height: 1.1,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
@@ -1148,8 +1331,6 @@ class _TrainingCardGlass extends StatelessWidget {
   final String level;
   final String imgUrl;
   final VoidCallback onTap;
-
-  // ✅ Variables pour la gestion des favoris
   final int routineId;
   final bool isFavorite;
   final VoidCallback onFavoriteTap;
@@ -1179,7 +1360,6 @@ class _TrainingCardGlass extends StatelessWidget {
             imgUrl.startsWith('http')
                 ? Image.network(imgUrl, fit: BoxFit.cover)
                 : Image.asset(imgUrl, fit: BoxFit.cover),
-
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -1190,8 +1370,6 @@ class _TrainingCardGlass extends StatelessWidget {
                 ),
               ),
             ),
-
-            // ✅ BOUTON FAVORI EN HAUT À DROITE
             Positioned(
               top: 12,
               right: 12,
@@ -1226,7 +1404,6 @@ class _TrainingCardGlass extends StatelessWidget {
                 ),
               ),
             ),
-
             Positioned(
               left: 16,
               right: 16,
@@ -1257,7 +1434,6 @@ class _TrainingCardGlass extends StatelessWidget {
                 ],
               ),
             ),
-
             Positioned(
               left: 16,
               bottom: 16,
@@ -1349,7 +1525,6 @@ class _NewsHeroCard extends StatelessWidget {
                 )
               else
                 _fallbackImg(),
-
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -1364,7 +1539,6 @@ class _NewsHeroCard extends StatelessWidget {
                   ),
                 ),
               ),
-
               Positioned(
                 top: 14,
                 left: 14,
@@ -1398,7 +1572,6 @@ class _NewsHeroCard extends StatelessWidget {
                   ),
                 ),
               ),
-
               Positioned(
                 bottom: 16,
                 left: 16,
