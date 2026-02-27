@@ -276,8 +276,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       if (raw.startsWith('http')) return NetworkImage(raw);
-      if (raw.startsWith('data:image'))
+      if (raw.startsWith('data:image')) {
         return MemoryImage(base64Decode(raw.split(',').last));
+      }
       if (raw.length > 80) return MemoryImage(base64Decode(raw));
     } catch (e) {
       debugPrint("Erreur decode avatar: $e");
@@ -296,8 +297,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (raw.isNotEmpty) {
       try {
         if (raw.startsWith('http')) return NetworkImage(raw);
-        if (raw.startsWith('data:image'))
+        if (raw.startsWith('data:image')) {
           return MemoryImage(base64Decode(raw.split(',').last));
+        }
         if (raw.length > 80) return MemoryImage(base64Decode(raw));
       } catch (e) {
         debugPrint("Erreur decode banner: $e");
@@ -895,7 +897,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           CupertinoSwitch(
             value: value,
-            activeColor: clubOrange,
+            activeTrackColor: clubOrange,
             onChanged: onChanged,
           ),
         ],

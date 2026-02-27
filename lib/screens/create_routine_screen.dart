@@ -1,7 +1,21 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../services/routine_service.dart';
 import 'workout_player_screen.dart';
 import 'program_config_screen.dart';
+
+// =========================
+// COULEURS DU THÈME GLOBALES
+// =========================
+const Color clubOrange = Color(0xFFF57809);
+const Color darkBg = Color(
+  0xFF000000,
+); // ✅ Modifié pour correspondre à la page d'accueil
+const Color purpleButton = Color(0xFF5E35B1);
+const Color surfaceColor = Color(0xFF222222);
+const Color textPrimary = Color(0xFFFFFFFF);
+const Color textSecondary = Color(0xFFA0A5B1);
+const Color softBorder = Color(0xFF333333);
 
 /// ✅ Alias de compatibilité
 class TrainingScreen extends StatelessWidget {
@@ -22,19 +36,9 @@ class CreateRoutineScreen extends StatefulWidget {
 
 class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
   // =========================
-  // COULEURS DU THÈME
-  // =========================
-  static const Color clubOrange = Color(0xFFF57809);
-  static const Color darkBg = Color(0xFF0B0B0F);
-  static const Color purpleButton = Color(0xFF5E35B1);
-  static const Color surfaceColor = Color(0xFF222222);
-  static const Color textPrimary = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(0xFFA0A5B1);
-
-  // =========================
   // NAVIGATION / ONGLETS
   // =========================
-  int _currentTabIndex = 0; // 0 = Catalogue, 1 = Mes Routines
+  int _currentTabIndex = 0; // 0 = Catalogue, 1 = Favoris, 2 = Mes Routines
   bool _isCreateMode = false;
 
   // =========================
@@ -42,7 +46,6 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
   // =========================
   bool _isLoadingCatalog = true;
   List<dynamic> _catalogRoutines = [];
-  final Set<int> _favoriteRoutineIds = <int>{};
   final Set<String> _favoriteCategoryTitles = <String>{};
 
   // =========================
@@ -171,16 +174,6 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
     return [_optimisticCreatedRoutine!, ..._myRoutines];
   }
 
-  void _toggleFavorite(int routineId) {
-    setState(() {
-      if (_favoriteRoutineIds.contains(routineId)) {
-        _favoriteRoutineIds.remove(routineId);
-      } else {
-        _favoriteRoutineIds.add(routineId);
-      }
-    });
-  }
-
   void _toggleCategoryFavorite(String title) {
     setState(() {
       if (_favoriteCategoryTitles.contains(title)) {
@@ -192,12 +185,28 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
   }
 
   // =========================
+  // FAVORIS (catégories only)
+  // =========================
+
+  List<Map<String, dynamic>> get _allCategories => [
+    ..._muscleCategories,
+    ..._otherCategories,
+  ];
+
+  List<Map<String, dynamic>> _favoriteCategories() {
+    return _allCategories.where((c) {
+      final t = (c['title'] ?? '').toString();
+      return _favoriteCategoryTitles.contains(t);
+    }).toList();
+  }
+
+  // =========================
   // NAVIGATION ACTIONS
   // =========================
 
   void _enterCreateMode() {
     setState(() {
-      _currentTabIndex = 1;
+      _currentTabIndex = 2; // ✅ Mes routines
       _isCreateMode = true;
       _resetDraft();
       _editingRoutineId = null;
@@ -549,7 +558,7 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
     }
     final draftExercises = _extractDraftExercisesFromApi(routineData);
     setState(() {
-      _currentTabIndex = 1;
+      _currentTabIndex = 2; // ✅ Mes routines
       _isCreateMode = true;
       _editingRoutineId = id;
       _titleCtrl.text = _routineTitle(routineData);
@@ -655,6 +664,12 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
   // BUILD PRINCIPAL
   // =========================
 
+  Widget _buildTabBody() {
+    if (_currentTabIndex == 0) return _buildCatalogueTab();
+    if (_currentTabIndex == 1) return _buildFavoritesTab();
+    return _buildMyRoutinesHub();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isCreateMode) {
@@ -719,9 +734,7 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 220),
-                child: _currentTabIndex == 0
-                    ? _buildCatalogueTab()
-                    : _buildMyRoutinesHub(),
+                child: _buildTabBody(),
               ),
             ),
           ],
@@ -747,7 +760,9 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        Padding(
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: Row(
             children: [
@@ -758,9 +773,15 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
               ),
               const SizedBox(width: 24),
               _CustomTab(
-                title: "Mes Routines",
+                title: "Favoris",
                 isActive: _currentTabIndex == 1,
                 onTap: () => setState(() => _currentTabIndex = 1),
+              ),
+              const SizedBox(width: 24),
+              _CustomTab(
+                title: "Mes Routines",
+                isActive: _currentTabIndex == 2,
+                onTap: () => setState(() => _currentTabIndex = 2),
               ),
             ],
           ),
@@ -925,7 +946,89 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
   }
 
   // =========================
-  // ONGLET 2 : MES ROUTINES (HUB)
+  // ONGLET 2 : FAVORIS (catégories)
+  // =========================
+
+  Widget _buildFavoritesTab() {
+    final favCats = _favoriteCategories();
+
+    return RefreshIndicator(
+      color: clubOrange,
+      backgroundColor: const Color(0xFF1A1A22),
+      onRefresh: () async {
+        await _loadCatalogRoutines();
+      },
+      child: ListView(
+        key: const ValueKey('favorites_tab'),
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          16,
+          16,
+          170 + MediaQuery.of(context).padding.bottom,
+        ),
+        children: [
+          Text(
+            "FAVORIS",
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.92),
+              fontWeight: FontWeight.w900,
+              fontSize: 14,
+              letterSpacing: 0.6,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          if (_isLoadingCatalog) ...[
+            const Center(child: CircularProgressIndicator(color: clubOrange)),
+          ] else if (favCats.isEmpty) ...[
+            Text(
+              "Aucune catégorie en favoris pour l’instant.",
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.55),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ] else ...[
+            SizedBox(
+              height: 280,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                itemCount: favCats.length,
+                itemBuilder: (context, index) {
+                  final cat = favCats[index];
+                  final title = (cat['title'] as String);
+                  final keys = (cat['keys'] as List).cast<String>();
+
+                  final img = _getImageForGroup(title);
+                  final count = _countRoutinesForCategory(keys);
+                  final desc = _getCategoryDescription(title);
+
+                  return _CategoryHorizontalCard(
+                    title: title,
+                    description: desc,
+                    variationsCount: count,
+                    averageTime: "45 min",
+                    imgUrl: img,
+                    fallbackIcon: _getIconForCategory(title),
+                    isFavorite: true,
+                    onFavoriteTap: () => _toggleCategoryFavorite(title),
+                    onTap: () => _openCategoryConfig(title, keys),
+                  );
+                },
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // =========================
+  // ONGLET 3 : MES ROUTINES (HUB)
   // =========================
 
   Widget _buildMyRoutinesHub() {
@@ -964,6 +1067,7 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
       backgroundColor: const Color(0xFF1A1A22),
       onRefresh: _loadMyRoutines,
       child: ListView(
+        key: const ValueKey('my_routines_tab'),
         physics: const AlwaysScrollableScrollPhysics(
           parent: BouncingScrollPhysics(),
         ),
@@ -994,73 +1098,67 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
               ),
             ],
           ),
-          ...List.generate(routines.length, (index) {
-            final routine = routines[index];
-            final title = _routineTitle(routine);
-
-            final m = _mapify(routine);
-            String categoryString = (m['muscleGroup'] ?? m['category'] ?? '')
-                .toString();
-
-            if (categoryString.isEmpty || categoryString == 'null') {
-              categoryString = title;
-            }
-
-            final categoryForIcon = categoryString;
-            final String imgUrl = _getImageForGroup(categoryString);
-
-            // =========================
-            // CALCULS (Stats Routine)
-            // =========================
-            int exCount = _toInt(m['exerciseCount']) ?? 0;
-            int tSets = 0;
-            int tDurationSec = 0;
-
-            final rawExercises = m['exercises'];
-            if (rawExercises is List) {
-              if (exCount == 0) exCount = rawExercises.length;
-
-              for (final raw in rawExercises) {
-                final exMap = _mapify(raw);
-                final sets = _toInt(exMap['sets']) ?? 1;
-                // Prends la donnée 'reps' (du draft) ou 'repsMax' (de l'API)
-                final reps =
-                    _toInt(exMap['reps']) ?? _toInt(exMap['repsMax']) ?? 10;
-                // Idem pour le temps de repos
-                final rest =
-                    _toInt(exMap['restSec']) ??
-                    _toInt(exMap['restSeconds']) ??
-                    60;
-
-                tSets += sets;
-                // Calcul = Temps sous tension (4s par rep) + Temps de repos
-                tDurationSec += sets * ((reps * 4) + rest);
-              }
-            }
-
-            int dMin = tDurationSec > 0 ? (tDurationSec ~/ 60) : 45;
-            if (tDurationSec > 0 && dMin == 0)
-              dMin = 1; // Minimum 1 min si l'entraînement est très court
-
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: _WorkoutCard(
-                title: title,
-                exerciseCount: exCount,
-                totalSets: tSets,
-                durationMin: dMin,
-                imgUrl: imgUrl,
-                categoryForIcon: categoryForIcon,
-                accent: clubOrange,
-                isFullWidth: true,
-                onTap: () => _startRoutine(routine),
-                onEdit: () => _editRoutine(routine),
-                onDuplicate: () => _duplicateRoutine(routine),
-                onDelete: () => _deleteRoutine(routine),
-              ),
-            );
-          }),
+          ...routines.map((r) => _buildRoutineCardItem(r)),
         ],
+      ),
+    );
+  }
+
+  Widget _buildRoutineCardItem(dynamic routine) {
+    final title = _routineTitle(routine);
+
+    final m = _mapify(routine);
+    String categoryString = (m['muscleGroup'] ?? m['category'] ?? '')
+        .toString();
+
+    if (categoryString.isEmpty || categoryString == 'null') {
+      categoryString = title;
+    }
+
+    final categoryForIcon = categoryString;
+    final String imgUrl = _getImageForGroup(categoryString);
+
+    // =========================
+    // CALCULS (Stats Routine)
+    // =========================
+    int exCount = _toInt(m['exerciseCount']) ?? 0;
+    int tSets = 0;
+    int tDurationSec = 0;
+
+    final rawExercises = m['exercises'];
+    if (rawExercises is List) {
+      if (exCount == 0) exCount = rawExercises.length;
+
+      for (final raw in rawExercises) {
+        final exMap = _mapify(raw);
+        final sets = _toInt(exMap['sets']) ?? 1;
+        final reps = _toInt(exMap['reps']) ?? _toInt(exMap['repsMax']) ?? 10;
+        final rest =
+            _toInt(exMap['restSec']) ?? _toInt(exMap['restSeconds']) ?? 60;
+
+        tSets += sets;
+        tDurationSec += sets * ((reps * 4) + rest);
+      }
+    }
+
+    int dMin = tDurationSec > 0 ? (tDurationSec ~/ 60) : 45;
+    if (tDurationSec > 0 && dMin == 0) dMin = 1;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: _WorkoutCard(
+        title: title,
+        exerciseCount: exCount,
+        totalSets: tSets,
+        durationMin: dMin,
+        imgUrl: imgUrl,
+        categoryForIcon: categoryForIcon,
+        accent: clubOrange,
+        isFullWidth: true,
+        onTap: () => _startRoutine(routine),
+        onEdit: () => _editRoutine(routine),
+        onDuplicate: () => _duplicateRoutine(routine),
+        onDelete: () => _deleteRoutine(routine),
       ),
     );
   }
@@ -1161,7 +1259,6 @@ class _CustomTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const accent = Color(0xFFF57809);
     return GestureDetector(
       onTap: onTap,
       child: Column(
@@ -1171,7 +1268,7 @@ class _CustomTab extends StatelessWidget {
             style: TextStyle(
               fontSize: 14,
               fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-              color: isActive ? accent : Colors.white54,
+              color: isActive ? clubOrange : Colors.white54,
             ),
           ),
           const SizedBox(height: 8),
@@ -1180,7 +1277,7 @@ class _CustomTab extends StatelessWidget {
               height: 3,
               width: 40,
               decoration: BoxDecoration(
-                color: accent,
+                color: clubOrange,
                 borderRadius: BorderRadius.circular(2),
               ),
             )
@@ -1192,6 +1289,9 @@ class _CustomTab extends StatelessWidget {
   }
 }
 
+// =====================
+// CARTE CATALOGUE (GLASSMORPHISM)
+// =====================
 class _CategoryHorizontalCard extends StatelessWidget {
   final String title;
   final String description;
@@ -1217,228 +1317,165 @@ class _CategoryHorizontalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color surfaceColor = Color(0xFF1C1C22);
-    const Color textPrimary = Color(0xFFFFFFFF);
-    const Color textSecondary = Color(0xFFA0A5B1);
-    const Color softBorder = Color(0xFF333333);
-    const Color accent = Color(0xFFF57809);
-
     return Container(
       width: 260,
       margin: const EdgeInsets.only(right: 16),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
+      child: GestureDetector(
+        onTap: onTap,
+        child: ClipRRect(
           borderRadius: BorderRadius.circular(20),
-          child: Ink(
-            decoration: BoxDecoration(
-              color: surfaceColor,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.05),
-                width: 1,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // 1. Image de fond
+              imgUrl.startsWith('http')
+                  ? Image.network(
+                      imgUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Container(
+                        color: softBorder,
+                        child: Icon(
+                          fallbackIcon,
+                          size: 40,
+                          color: textSecondary.withOpacity(0.5),
+                        ),
+                      ),
+                    )
+                  : Image.asset(
+                      imgUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Container(
+                        color: softBorder,
+                        child: Icon(
+                          fallbackIcon,
+                          size: 40,
+                          color: textSecondary.withOpacity(0.5),
+                        ),
+                      ),
+                    ),
+
+              // 2. Dégradé sombre pour la lisibilité
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.95),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.7],
+                  ),
+                ),
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 15,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(20),
-                  ),
-                  child: SizedBox(
-                    height: 125,
-                    width: double.infinity,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        imgUrl.startsWith('http')
-                            ? Image.network(
-                                imgUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => Container(
-                                  color: softBorder,
-                                  child: Center(
-                                    child: Icon(
-                                      fallbackIcon,
-                                      size: 32,
-                                      color: textSecondary.withOpacity(0.5),
-                                    ),
-                                  ),
-                                ),
-                              )
-                            : Image.asset(
-                                imgUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => Container(
-                                  color: softBorder,
-                                  child: Center(
-                                    child: Icon(
-                                      fallbackIcon,
-                                      size: 32,
-                                      color: textSecondary.withOpacity(0.5),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                        DecoratedBox(
+
+              // 3. Bouton Favori (Glassmorphism)
+              if (onFavoriteTap != null)
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: GestureDetector(
+                    onTap: onFavoriteTap,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.bottomCenter,
-                              end: Alignment.topCenter,
-                              colors: [
-                                Colors.black.withOpacity(0.6),
-                                Colors.transparent,
-                              ],
+                            color: isFavorite
+                                ? clubOrange.withOpacity(0.8)
+                                : Colors.black.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isFavorite
+                                  ? clubOrange
+                                  : Colors.white.withOpacity(0.2),
                             ),
+                          ),
+                          child: Icon(
+                            isFavorite
+                                ? Icons.bookmark_rounded
+                                : Icons.bookmark_border_rounded,
+                            color: Colors.white,
+                            size: 20,
                           ),
                         ),
-                        if (onFavoriteTap != null)
-                          Positioned(
-                            top: 10,
-                            right: 10,
-                            child: GestureDetector(
-                              onTap: onFavoriteTap,
-                              child: Container(
-                                width: 34,
-                                height: 34,
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.4),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: Colors.white.withOpacity(0.1),
-                                  ),
-                                ),
-                                child: Icon(
-                                  isFavorite
-                                      ? Icons.favorite_rounded
-                                      : Icons.favorite_border_rounded,
-                                  size: 18,
-                                  color: isFavorite ? accent : Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+
+              // 4. Textes en bas
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: 16,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title.toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        fontStyle: FontStyle.italic,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.7),
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                        height: 1.3,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
                       children: [
+                        const Icon(
+                          Icons.layers_rounded,
+                          color: clubOrange,
+                          size: 14,
+                        ),
+                        const SizedBox(width: 4),
                         Text(
-                          title.toUpperCase(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          "$variationsCount variantes",
                           style: const TextStyle(
-                            color: textPrimary,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 16,
-                            letterSpacing: 0.5,
+                            color: clubOrange,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          description,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                        const SizedBox(width: 12),
+                        const Icon(
+                          Icons.timer_outlined,
+                          color: textSecondary,
+                          size: 14,
+                        ),
+                        const SizedBox(width: 4),
+                        const Text(
+                          "~ 45 min",
+                          style: TextStyle(
                             color: textSecondary,
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w500,
-                            height: 1.4,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
                           ),
-                        ),
-                        const Spacer(),
-                        Divider(
-                          color: Colors.white.withOpacity(0.05),
-                          height: 16,
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.layers_rounded,
-                                      color: accent,
-                                      size: 14,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      "$variationsCount variantes",
-                                      style: const TextStyle(
-                                        color: accent,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.timer_outlined,
-                                      color: textSecondary,
-                                      size: 14,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      "~ $averageTime",
-                                      style: const TextStyle(
-                                        color: textSecondary,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: accent,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: accent.withOpacity(0.3),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.arrow_forward_rounded,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ],
                         ),
                       ],
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1447,7 +1484,7 @@ class _CategoryHorizontalCard extends StatelessWidget {
 }
 
 // =====================
-// CARTE ROUTINE CLASSIQUE (MES ROUTINES)
+// CARTE ROUTINE CLASSIQUE (MES ROUTINES - GLASSMORPHISM)
 // =====================
 
 class _WorkoutCard extends StatelessWidget {
@@ -1510,277 +1547,199 @@ class _WorkoutCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color surfaceColor = Color(0xFF222222);
-    const Color textPrimary = Color(0xFFFFFFFF);
-    const Color textSecondary = Color(0xFFA0A5B1);
-    const Color softBorder = Color(0xFF333333);
-
     final bool hasMenuOptions =
         onEdit != null || onDuplicate != null || onDelete != null;
 
     return Container(
+      height: 190, // ✅ Hauteur imposée pour l'effet expand
       width: isFullWidth ? double.infinity : 260,
       margin: EdgeInsets.only(right: isFullWidth ? 0 : 12),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Ink(
-            decoration: BoxDecoration(
-              color: surfaceColor,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(16),
+      child: GestureDetector(
+        onTap: onTap,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // 1. Image
+              imgUrl.startsWith('http')
+                  ? Image.network(
+                      imgUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Container(
+                        color: softBorder,
+                        child: Icon(
+                          _getFallbackIcon(),
+                          color: textSecondary,
+                          size: 40,
+                        ),
+                      ),
+                    )
+                  : Image.asset(
+                      imgUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Container(
+                        color: softBorder,
+                        child: Icon(
+                          _getFallbackIcon(),
+                          color: textSecondary,
+                          size: 40,
+                        ),
+                      ),
+                    ),
+
+              // 2. Dégradé
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.95),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.7],
                   ),
-                  child: SizedBox(
-                    height: 120,
-                    width: double.infinity,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        imgUrl.startsWith('http')
-                            ? Image.network(
-                                imgUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => Container(
-                                  color: softBorder,
-                                  child: Center(
-                                    child: Icon(
-                                      _getFallbackIcon(),
-                                      color: textSecondary,
-                                    ),
-                                  ),
-                                ),
-                              )
-                            : Image.asset(
-                                imgUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => Container(
-                                  color: softBorder,
-                                  child: Center(
-                                    child: Icon(
-                                      _getFallbackIcon(),
-                                      color: textSecondary,
-                                    ),
-                                  ),
-                                ),
+                ),
+              ),
+
+              // 3. Menu contextuel (Glass)
+              if (hasMenuOptions)
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      child: Container(
+                        height: 36,
+                        width: 36,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.2),
+                          ),
+                        ),
+                        child: PopupMenuButton<int>(
+                          padding: EdgeInsets.zero,
+                          color: const Color(0xFF17171F),
+                          icon: const Icon(
+                            Icons.more_vert_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          onSelected: (v) {
+                            if (v == 1) onEdit?.call();
+                            if (v == 2) onDuplicate?.call();
+                            if (v == 3) onDelete?.call();
+                          },
+                          itemBuilder: (_) => const [
+                            PopupMenuItem(
+                              value: 1,
+                              child: Text(
+                                "Modifier",
+                                style: TextStyle(color: Colors.white),
                               ),
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.bottomCenter,
-                              end: Alignment.topCenter,
-                              colors: [
-                                Colors.black.withOpacity(0.4),
-                                Colors.transparent,
-                              ],
                             ),
-                          ),
+                            PopupMenuItem(
+                              value: 2,
+                              child: Text(
+                                "Dupliquer",
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 3,
+                              child: Text(
+                                "Supprimer",
+                                style: TextStyle(color: Colors.redAccent),
+                              ),
+                            ),
+                          ],
                         ),
-                        Positioned(
-                          top: 10,
-                          right: 10,
-                          child: Row(
-                            children: [
-                              // ❌ ICI ON A ENLEVÉ L'ICONE FAVORIS
-                              if (hasMenuOptions) ...[
-                                Container(
-                                  width: 34,
-                                  height: 34,
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.5),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: PopupMenuButton<int>(
-                                    padding: EdgeInsets.zero,
-                                    color: const Color(0xFF17171F),
-                                    icon: const Icon(
-                                      Icons.more_vert_rounded,
-                                      color: Colors.white,
-                                      size: 18,
-                                    ),
-                                    onSelected: (v) {
-                                      if (v == 1) onEdit?.call();
-                                      if (v == 2) onDuplicate?.call();
-                                      if (v == 3) onDelete?.call();
-                                    },
-                                    itemBuilder: (_) => const [
-                                      PopupMenuItem(
-                                        value: 1,
-                                        child: Text(
-                                          "Modifier",
-                                          style: TextStyle(color: Colors.white),
-                                        ),
-                                      ),
-                                      PopupMenuItem(
-                                        value: 2,
-                                        child: Text(
-                                          "Dupliquer",
-                                          style: TextStyle(color: Colors.white),
-                                        ),
-                                      ),
-                                      PopupMenuItem(
-                                        value: 3,
-                                        child: Text(
-                                          "Supprimer",
-                                          style: TextStyle(
-                                            color: Colors.redAccent,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title.toUpperCase(),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: textPrimary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14.5,
-                          height: 1.15,
+
+              // 4. Contenu Textuel
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: 56, // Remonté pour laisser la place au bouton Lancer
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title.toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      "$exerciseCount exos • $totalSets séries • ~$durationMin min",
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.7),
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // 5. Bouton d'action "LANCER" (Glass)
+              Positioned(
+                left: 16,
+                bottom: 12,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(99),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(99),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.2),
                         ),
                       ),
-                      const SizedBox(height: 8),
-
-                      // ✅ NOUVELLE LIGNE AVEC STATISTIQUES
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 4,
-                        crossAxisAlignment: WrapCrossAlignment.center,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.fitness_center_rounded,
-                                size: 13,
-                                color: textSecondary,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                "$exerciseCount exos",
-                                style: const TextStyle(
-                                  color: textSecondary,
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
+                          Icon(
+                            Icons.play_arrow_rounded,
+                            color: accent,
+                            size: 16,
                           ),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.layers_rounded,
-                                size: 13,
-                                color: textSecondary,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                "$totalSets séries",
-                                style: const TextStyle(
-                                  color: textSecondary,
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.timer_outlined,
-                                size: 13,
-                                color: textSecondary,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                "~ $durationMin min",
-                                style: const TextStyle(
-                                  color: textSecondary,
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
+                          const SizedBox(width: 4),
+                          const Text(
+                            "LANCER",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ],
                       ),
-
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 7,
-                            ),
-                            decoration: BoxDecoration(
-                              color: accent.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.play_arrow_rounded,
-                                  color: accent,
-                                  size: 16,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  "Lancer",
-                                  style: TextStyle(
-                                    color: accent,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Spacer(),
-                          const Icon(
-                            Icons.arrow_forward_ios_rounded,
-                            size: 13,
-                            color: textSecondary,
-                          ),
-                        ],
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1817,7 +1776,7 @@ class _PrimaryActionButton extends StatelessWidget {
         ),
       ),
       style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFFF57809),
+        backgroundColor: clubOrange,
         padding: const EdgeInsets.symmetric(vertical: 14),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
@@ -1867,7 +1826,7 @@ class _ExerciseDraftCard extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 14,
-              backgroundColor: const Color(0xFFF57809).withOpacity(0.15),
+              backgroundColor: clubOrange.withOpacity(0.15),
               child: Text(
                 "${index + 1}",
                 style: const TextStyle(
@@ -1998,7 +1957,7 @@ class _MiniCounter extends StatelessWidget {
               child: const Icon(
                 Icons.add_circle_outline,
                 size: 18,
-                color: Color(0xFFF57809),
+                color: clubOrange,
               ),
             ),
           ],
@@ -2051,6 +2010,10 @@ class _DraftRoutineExercise {
   });
 }
 
+// =====================
+// ÉCRAN DE SÉLECTION D'EXERCICE (Branché sur API)
+// =====================
+
 class ExercisePickerScreen extends StatefulWidget {
   const ExercisePickerScreen({super.key});
 
@@ -2059,10 +2022,268 @@ class ExercisePickerScreen extends StatefulWidget {
 }
 
 class _ExercisePickerScreenState extends State<ExercisePickerScreen> {
+  String _searchQuery = "";
+  String _selectedCategory = "Tout";
+
+  bool _isLoading = true;
+  List<_ExerciseLite> _allExercises = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchExercises();
+  }
+
+  // ✅ APPEL À TON API VIA ROUTINESERVICE
+  Future<void> _fetchExercises() async {
+    try {
+      final data = await RoutineService().getAllExercises();
+
+      if (!mounted) return;
+
+      final List<_ExerciseLite> loadedExercises = [];
+
+      for (final item in data) {
+        if (item is Map) {
+          final id = _toInt(item['id']) ?? 0;
+          final name = (item['name'] ?? 'Exercice sans nom').toString();
+          final muscleGroup =
+              (item['muscleGroup'] ?? item['category'] ?? 'Autre').toString();
+
+          loadedExercises.add(
+            _ExerciseLite(id: id, name: name, muscleGroup: muscleGroup),
+          );
+        }
+      }
+
+      setState(() {
+        _allExercises = loadedExercises;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint("Erreur lors du chargement des exercices : $e");
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Erreur de chargement des exercices.")),
+        );
+      }
+    }
+  }
+
+  int? _toInt(dynamic v) {
+    if (v == null) return null;
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse(v.toString());
+  }
+
+  List<String> get _categories {
+    final set = <String>{"Tout"};
+    for (var e in _allExercises) {
+      if (e.muscleGroup.isNotEmpty) {
+        set.add(e.muscleGroup);
+      }
+    }
+    return set.toList();
+  }
+
+  List<_ExerciseLite> get _filteredExercises {
+    return _allExercises.where((e) {
+      final matchesSearch = e.name.toLowerCase().contains(
+        _searchQuery.toLowerCase(),
+      );
+      final matchesCat =
+          _selectedCategory == "Tout" || e.muscleGroup == _selectedCategory;
+      return matchesSearch && matchesCat;
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text("Exercise Picker - Implémentation masquée ici")),
+    const Color clubOrange = Color(0xFFF57809);
+    const Color darkBg = Color(0xFF000000);
+    const Color surfaceColor = Color(0xFF222222);
+    const Color textSecondary = Color(0xFFA0A5B1);
+
+    final filtered = _filteredExercises;
+    final categories = _categories;
+
+    return Scaffold(
+      backgroundColor: darkBg,
+      appBar: AppBar(
+        backgroundColor: darkBg,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text(
+          "Ajouter un exercice",
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+            fontSize: 18,
+          ),
+        ),
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: clubOrange))
+          : Column(
+              children: [
+                // --- BARRE DE RECHERCHE ---
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: TextField(
+                    style: const TextStyle(color: Colors.white),
+                    onChanged: (val) => setState(() => _searchQuery = val),
+                    decoration: InputDecoration(
+                      hintText: "Rechercher un exercice...",
+                      hintStyle: TextStyle(
+                        color: textSecondary.withOpacity(0.5),
+                      ),
+                      filled: true,
+                      fillColor: surfaceColor,
+                      prefixIcon: const Icon(
+                        Icons.search_rounded,
+                        color: textSecondary,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                    ),
+                  ),
+                ),
+
+                // --- FILTRES CATÉGORIES ---
+                if (categories.length > 1)
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Row(
+                      children: categories.map((cat) {
+                        final isSelected = cat == _selectedCategory;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: GestureDetector(
+                            onTap: () =>
+                                setState(() => _selectedCategory = cat),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isSelected ? clubOrange : surfaceColor,
+                                borderRadius: BorderRadius.circular(99),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? clubOrange
+                                      : Colors.white.withOpacity(0.1),
+                                ),
+                              ),
+                              child: Text(
+                                cat,
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? Colors.white
+                                      : textSecondary,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w800
+                                      : FontWeight.w600,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+
+                // --- LISTE DES EXERCICES ---
+                Expanded(
+                  child: filtered.isEmpty
+                      ? const Center(
+                          child: Text(
+                            "Aucun exercice trouvé.",
+                            style: TextStyle(
+                              color: textSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          physics: const BouncingScrollPhysics(),
+                          padding: EdgeInsets.fromLTRB(
+                            16,
+                            0,
+                            16,
+                            MediaQuery.of(context).padding.bottom + 16,
+                          ),
+                          itemCount: filtered.length,
+                          itemBuilder: (context, index) {
+                            final exercise = filtered[index];
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              decoration: BoxDecoration(
+                                color: surfaceColor,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.05),
+                                ),
+                              ),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 4,
+                                ),
+                                onTap: () {
+                                  // ✅ Renvoie l'exercice sélectionné à la page de création
+                                  Navigator.pop(context, exercise);
+                                },
+                                leading: Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.05),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.fitness_center_rounded,
+                                    color: clubOrange,
+                                    size: 20,
+                                  ),
+                                ),
+                                title: Text(
+                                  exercise.name,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  exercise.muscleGroup,
+                                  style: const TextStyle(
+                                    color: textSecondary,
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                trailing: Icon(
+                                  Icons.add_circle_outline_rounded,
+                                  color: Colors.white.withOpacity(0.3),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
     );
   }
 }
