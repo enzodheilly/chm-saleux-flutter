@@ -15,14 +15,18 @@ import 'workout_player_screen.dart';
 import 'create_routine_screen.dart';
 import 'profile_screen.dart';
 import 'program_config_screen.dart';
+import 'calendar_screen.dart';
 
 const Color clubOrange = Color(0xFFF57809);
-const Color appBackground = Color(0xFF000000); // Retour au noir absolu
+const Color appBackground = Color(0xFF000000);
 const Color navBarColor = Color(0xFF000000);
-const Color surfaceColor = Color(0xFF1E1E1E); // Couleur des cartes inaltérée
+const Color surfaceColor = Color(0xFF1E1E1E);
 const Color textPrimary = Color(0xFFFFFFFF);
 const Color textSecondary = Color(0xFFA0A5B1);
-const Color softBorder = Color(0xFF333333);
+const Color purpleButton = Color(0xFF5E35B1);
+
+// ✅ Enumération pour l'état des jours du calendrier
+enum _DayState { completed, missed, today, future }
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -46,6 +50,9 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isNewsLoading = true;
 
   final Set<int> _favoriteRoutineIds = <int>{};
+
+  // ✅ Données dynamiques du calendrier
+  List<Map<String, dynamic>> _weekDays = [];
 
   @override
   void initState() {
@@ -106,6 +113,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
         allPrograms = programs;
         lastSessions = sessions;
+
+        // ✅ Mise à jour du calendrier
+        _buildCalendarData();
+
         isLoading = false;
       });
     } catch (e) {
@@ -130,6 +141,64 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // ✅ LOGIQUE DU CALENDRIER CONNECTÉ
+  void _buildCalendarData() {
+    final now = DateTime.now();
+    final currentWeekday = now.weekday;
+    final monday = now.subtract(Duration(days: currentWeekday - 1));
+
+    Set<String> sessionDates = {};
+    for (var session in lastSessions) {
+      // ✅ Ajout de performed_at pour la compatibilité avec la base de données
+      String? dateStr =
+          session['date'] ??
+          session['createdAt'] ??
+          session['completedAt'] ??
+          session['performed_at'];
+      if (dateStr != null) {
+        try {
+          final dt = DateTime.parse(dateStr).toLocal();
+          sessionDates.add(
+            "${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}",
+          );
+        } catch (_) {}
+      }
+    }
+
+    _weekDays = [];
+    List<String> dayNames = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+
+    for (int i = 0; i < 7; i++) {
+      final dayDate = monday.add(Duration(days: i));
+      final dateKey =
+          "${dayDate.year}-${dayDate.month.toString().padLeft(2, '0')}-${dayDate.day.toString().padLeft(2, '0')}";
+
+      _DayState state;
+      final isToday =
+          (dayDate.year == now.year &&
+          dayDate.month == now.month &&
+          dayDate.day == now.day);
+
+      if (isToday) {
+        state = sessionDates.contains(dateKey)
+            ? _DayState.completed
+            : _DayState.today;
+      } else if (dayDate.isAfter(now)) {
+        state = _DayState.future;
+      } else {
+        state = sessionDates.contains(dateKey)
+            ? _DayState.completed
+            : _DayState.missed;
+      }
+
+      _weekDays.add({
+        "dayName": dayNames[i],
+        "dayNumber": dayDate.day.toString(),
+        "state": state,
+      });
+    }
+  }
+
   String _getGreeting() {
     final hour = DateTime.now().hour;
     if (hour < 12) {
@@ -142,15 +211,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // =========================================================
-  // ✅ HELPERS URL IMAGES BACKEND
+  // ✅ HELPERS
   // =========================================================
 
   String? _resolveBackendImageUrl(dynamic rawValue) {
     if (rawValue == null) return null;
-
     final raw = rawValue.toString().trim();
     if (raw.isEmpty || raw == 'null') return null;
-
     if (raw.startsWith('https://')) return raw;
     if (raw.startsWith('http://127.0.0.1:8000')) {
       return raw.replaceFirst('http://127.0.0.1:8000', 'http://10.0.2.2:8000');
@@ -159,11 +226,9 @@ class _HomeScreenState extends State<HomeScreen> {
       return raw.replaceFirst('http://localhost:8000', 'http://10.0.2.2:8000');
     }
     if (raw.startsWith('http://')) return raw;
-
     if (raw.startsWith('/uploads/')) return 'http://10.0.2.2:8000$raw';
     if (raw.startsWith('uploads/')) return 'http://10.0.2.2:8000/$raw';
     if (raw.startsWith('/')) return 'http://10.0.2.2:8000$raw';
-
     return 'http://10.0.2.2:8000/uploads/$raw';
   }
 
@@ -181,25 +246,30 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // =========================================================
-  // ✅ HELPERS ROUTINES
-  // =========================================================
-
   String _getImageForGroup(String groupName) {
     final name = groupName.toLowerCase().trim();
-    if (name.contains("pec") || name.contains("push"))
+    if (name.contains("pec") || name.contains("push")) {
       return "assets/images/pecs.jpg";
-    if (name.contains("dos") || name.contains("pull"))
+    }
+    if (name.contains("dos") || name.contains("pull")) {
       return "assets/images/dos.jpg";
-    if (name.contains("jambe") || name.contains("leg"))
+    }
+    if (name.contains("jambe") || name.contains("leg")) {
       return "assets/images/jambes.jpg";
-    if (name.contains("bras") || name.contains("biceps"))
+    }
+    if (name.contains("bras") || name.contains("biceps")) {
       return "assets/images/bras.jpg";
-    if (name.contains("epaule")) return "assets/images/epaules.jpg";
-    if (name.contains("abdo") || name.contains("abs"))
+    }
+    // ✅ Vérification avec accent et au singulier
+    if (name.contains("epaule") || name.contains("épaule")) {
+      return "assets/images/epaules.jpg";
+    }
+    if (name.contains("abdo") || name.contains("abs")) {
       return "assets/images/abdos.jpg";
-    if (name.contains("cardio") || name.contains("run"))
+    }
+    if (name.contains("cardio") || name.contains("run")) {
       return "assets/images/cardio.jpg";
+    }
     return "assets/images/default.jpg";
   }
 
@@ -221,11 +291,16 @@ class _HomeScreenState extends State<HomeScreen> {
       final rep = variations.first;
       final duration = rep['estimatedDurationMin'] ?? 60;
 
+      final level = (rep['level'] ?? "intermediaire").toString();
+      final labelLevel = level == "debutant"
+          ? "Débutant"
+          : (level == "avance" ? "Avancé" : "Intermédiaire");
+
       return {
         "title": g,
         "variationsCount": variations.length,
-        "averageTime": "$duration Min",
-        "rating": "4.8", // Fake rating pour matcher le design
+        "averageTime": "$duration min",
+        "level": labelLevel,
         "imgUrl": _getImageForGroup(g),
         "routineId": rep['id'],
         "variations": variations,
@@ -236,16 +311,17 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: appBackground, // ✅ Retour du fond noir complet
+      backgroundColor: appBackground,
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
-              child: _NewTopBar(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+              child: _TopBar(
                 userName: currentUserName,
                 greeting: _getGreeting(),
+                notifCount: 3,
                 userImage: profileImageUrl,
                 onProfileTap: () async {
                   await Navigator.push(
@@ -253,6 +329,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     MaterialPageRoute(builder: (_) => const ProfileScreen()),
                   );
                   _fetchCoreData();
+                },
+                onNotifTap: () {},
+                onCalendarTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CalendarScreen()),
+                  );
                 },
               ),
             ),
@@ -262,7 +345,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   IndexedStack(
                     index: _selectedIndex,
                     children: [
-                      _buildUnifiedHomeFeed(),
+                      _buildHomeTabs(),
                       const CreateRoutineScreen(),
                       const ProgressScreen(),
                       const Center(
@@ -309,50 +392,91 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ==========================================
-  // 🟢 FLUX UNIQUE COMPLET
+  // 🟢 SYSTÈME D'ONGLETS
   // ==========================================
-  Widget _buildUnifiedHomeFeed() {
+  Widget _buildHomeTabs() {
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: Colors.white.withOpacity(0.1),
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: const TabBar(
+                indicatorColor: clubOrange,
+                indicatorWeight: 3,
+                indicatorSize: TabBarIndicatorSize.tab,
+                labelColor: Colors.white,
+                unselectedLabelColor: textSecondary,
+                labelStyle: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                  letterSpacing: 0.1,
+                ),
+                unselectedLabelStyle: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  letterSpacing: 0.1,
+                ),
+                tabs: [
+                  Tab(text: "Toi"),
+                  Tab(text: "Actualités"),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: TabBarView(children: [_buildUserTab(), _buildNewsTab()]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUserTab() {
     final forYou = _buildForYouPrograms();
 
     return ListView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(0, 10, 0, 140),
+      padding: const EdgeInsets.fromLTRB(0, 0, 0, 140),
       children: [
-        // 1. CALENDRIER SEMAINE
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20.0),
-          child: _WeekCalendar(),
-        ),
-        const SizedBox(height: 28),
-
-        // 2. ACTIVITÉ DU JOUR (Graphique Compact)
+        // ✅ 1. CALENDRIER AVEC LES RONDS SUR FOND TRANSPARENT
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0),
-          child: _SectionHeader(
-            title: "Activité du jour",
-            actionText: "Voir tout",
-            onAction: () {},
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: _CircleCalendarTransparent(
+            weekDays: _weekDays,
+            isLoading: isLoading,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 24),
+
+        // 2. BLOC : STATISTIQUES RÉCENTES
         const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20.0),
-          child: _ActivityBarChart(),
+          padding: EdgeInsets.symmetric(horizontal: 16.0),
+          child: _RecentStatsCard(),
         ),
         const SizedBox(height: 32),
 
-        // 3. PROGRAMMES POPULAIRES (Horizontal Compact)
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: _SectionHeader(
-            title: "Programmes Populaires",
-            actionText: "Voir tout",
+            title: "ENTRAÎNEMENTS POUR TOI",
+            actionText: "VOIR TOUT",
             onAction: () => setState(() => _selectedIndex = 1),
           ),
         ),
         const SizedBox(height: 16),
         SizedBox(
-          height: 145, // Hauteur compacte
+          height: 190,
           child: isLoading
               ? const Center(
                   child: CircularProgressIndicator(color: clubOrange),
@@ -366,20 +490,25 @@ class _HomeScreenState extends State<HomeScreen> {
                       )
                     : ListView.builder(
                         scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.only(left: 20, right: 4),
+                        padding: const EdgeInsets.only(left: 16, right: 0),
                         physics: const BouncingScrollPhysics(),
                         itemCount: forYou.length,
                         itemBuilder: (context, i) {
                           final item = forYou[i];
-                          final routineId = item["routineId"] as int;
-
-                          return _PopularMethodCard(
+                          return _TrainingCardGlass(
                             title: item["title"].toString(),
                             variationsCount: item["variationsCount"] as int,
-                            rating: item["rating"].toString(),
+                            averageTime: item["averageTime"].toString(),
+                            level: item["level"].toString(),
                             imgUrl: item["imgUrl"].toString(),
-                            isFavorite: _favoriteRoutineIds.contains(routineId),
-                            onFavoriteTap: () => _toggleFavorite(routineId),
+                            // ✅ Ajouts pour l'icône favoris :
+                            routineId: item["routineId"] as int,
+                            isFavorite: _favoriteRoutineIds.contains(
+                              item["routineId"] as int,
+                            ),
+                            onFavoriteTap: () {
+                              _toggleFavorite(item["routineId"] as int);
+                            },
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -397,69 +526,54 @@ class _HomeScreenState extends State<HomeScreen> {
                       )),
         ),
         const SizedBox(height: 32),
-
-        // 4. ACTUALITÉS (Vertical list style recommandation)
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0),
-          child: _SectionHeader(
-            title: "Actualités du Club",
-            actionText: "Voir tout",
-            onAction: () {},
-          ),
-        ),
-        const SizedBox(height: 16),
-        _buildNewsVerticalList(),
       ],
     );
   }
 
-  Widget _buildNewsVerticalList() {
+  Widget _buildNewsTab() {
     if (isNewsLoading) {
-      return const Padding(
-        padding: EdgeInsets.all(24.0),
-        child: Center(child: CircularProgressIndicator(color: clubOrange)),
-      );
+      return const Center(child: CircularProgressIndicator(color: clubOrange));
     }
     if (siteNews.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(24.0),
-        child: Center(
-          child: Text(
-            "Aucune actualité.",
-            style: TextStyle(color: textSecondary),
-          ),
+      return const Center(
+        child: Text(
+          "Aucune actualité pour le moment.",
+          style: TextStyle(color: textSecondary),
         ),
       );
     }
 
     return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 140),
       itemCount: siteNews.length,
       itemBuilder: (context, index) {
         final article = siteNews[index] as Map<String, dynamic>;
         final imageUrl = _buildArticleImageUrl(article['photo']);
         final title = (article['title'] ?? "Titre indisponible").toString();
+        final excerpt =
+            (article['subtitle'] ??
+                    article['excerpt'] ??
+                    "Découvrez cette nouvelle actualité...")
+                .toString();
         final publishedAt = article['publishedAt']?.toString() ?? "";
 
-        // Formater la date
         String dateLabel = "Récemment";
         if (publishedAt.isNotEmpty) {
           try {
             final dt = DateTime.parse(publishedAt).toLocal();
             dateLabel =
-                "${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}";
+                "${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}";
           } catch (_) {}
         }
 
         return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: _RecommendationCard(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: _NewsHeroCard(
             title: title,
+            excerpt: excerpt,
             date: dateLabel,
             imgUrl: imageUrl,
-            tag: "News",
             onTap: () {},
           ),
         );
@@ -469,72 +583,62 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 // ==========================================
-// 🔥 WIDGETS POUR REPRODUIRE LA MAQUETTE
+// 🔥 WIDGETS
 // ==========================================
 
-// 1. TOP BAR
-class _NewTopBar extends StatelessWidget {
+class _TopBar extends StatelessWidget {
   final String userName;
   final String greeting;
+  final int notifCount;
   final String? userImage;
   final VoidCallback onProfileTap;
+  final VoidCallback onNotifTap;
+  final VoidCallback onCalendarTap;
 
-  const _NewTopBar({
+  const _TopBar({
     required this.userName,
     required this.greeting,
+    required this.notifCount,
     this.userImage,
     required this.onProfileTap,
+    required this.onNotifTap,
+    required this.onCalendarTap,
   });
-
-  ImageProvider? _resolveImage(String? url) {
-    if (url == null || url.isEmpty) return null;
-    if (url.startsWith('http'))
-      return NetworkImage(
-        url
-            .replaceFirst('127.0.0.1', '10.0.2.2')
-            .replaceFirst('localhost', '10.0.2.2'),
-      );
-    if (url.contains(','))
-      return MemoryImage(base64Decode(url.split(',').last));
-    return null;
-  }
 
   @override
   Widget build(BuildContext context) {
-    final image = _resolveImage(userImage);
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        GestureDetector(
+        _CircleIcon(
+          userImage: userImage,
+          icon: Icons.person_outline,
           onTap: onProfileTap,
-          child: CircleAvatar(
-            radius: 22,
-            backgroundColor: surfaceColor,
-            backgroundImage: image,
-            child: image == null
-                ? const Icon(Icons.person, color: Colors.white)
-                : null,
-          ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 14),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
                 greeting,
                 style: const TextStyle(
                   color: textSecondary,
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
               ),
+              const SizedBox(height: 2),
               Text(
                 userName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
+                  color: textPrimary,
+                  fontWeight: FontWeight.w800,
                   letterSpacing: 0.2,
+                  fontSize: 20,
                 ),
               ),
             ],
@@ -542,14 +646,15 @@ class _NewTopBar extends StatelessWidget {
         ),
         _TopBarIconButton(
           icon: Icons.notifications_none_rounded,
-          hasBadge: true,
-          onTap: () {},
+          hasBadge: notifCount > 0,
+          badgeText: "$notifCount",
+          onTap: onNotifTap,
         ),
         const SizedBox(width: 10),
         _TopBarIconButton(
           icon: Icons.calendar_today_rounded,
           hasBadge: false,
-          onTap: () {},
+          onTap: onCalendarTap,
         ),
       ],
     );
@@ -559,11 +664,13 @@ class _NewTopBar extends StatelessWidget {
 class _TopBarIconButton extends StatelessWidget {
   final IconData icon;
   final bool hasBadge;
+  final String? badgeText;
   final VoidCallback onTap;
 
   const _TopBarIconButton({
     required this.icon,
     required this.hasBadge,
+    this.badgeText,
     required this.onTap,
   });
 
@@ -572,6 +679,7 @@ class _TopBarIconButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
           Container(
             padding: const EdgeInsets.all(10),
@@ -583,18 +691,22 @@ class _TopBarIconButton extends StatelessWidget {
           ),
           if (hasBadge)
             Positioned(
-              top: 0,
-              right: 2,
+              top: -2,
+              right: -2,
               child: Container(
-                width: 10,
-                height: 10,
+                padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFF4B4B),
+                  color: const Color(0xFFE55B5B),
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: appBackground,
-                    width: 2,
-                  ), // Bordure raccord avec le fond noir
+                  border: Border.all(color: appBackground, width: 2),
+                ),
+                child: Text(
+                  badgeText ?? "",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
             ),
@@ -604,7 +716,389 @@ class _TopBarIconButton extends StatelessWidget {
   }
 }
 
-// 2. EN-TÊTE DE SECTION
+class _CircleIcon extends StatelessWidget {
+  final IconData icon;
+  final String? userImage;
+  final VoidCallback onTap;
+
+  const _CircleIcon({required this.icon, this.userImage, required this.onTap});
+
+  ImageProvider? _resolveImageProvider(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    final v = value.trim();
+    try {
+      if (v.startsWith('http://') || v.startsWith('https://')) {
+        final fixed = v
+            .replaceFirst('http://127.0.0.1:8000', 'http://10.0.2.2:8000')
+            .replaceFirst('http://localhost:8000', 'http://10.0.2.2:8000');
+        return NetworkImage(fixed);
+      }
+      if (v.startsWith('/') || v.startsWith('uploads/')) {
+        final fixed = v.startsWith('/')
+            ? 'http://10.0.2.2:8000$v'
+            : 'http://10.0.2.2:8000/$v';
+        return NetworkImage(fixed);
+      }
+      final raw = v.contains(',') ? v.split(',').last : v;
+      return MemoryImage(base64Decode(raw));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final imageProvider = _resolveImageProvider(userImage);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: surfaceColor,
+          shape: BoxShape.circle,
+          image: imageProvider != null
+              ? DecorationImage(image: imageProvider, fit: BoxFit.cover)
+              : null,
+        ),
+        child: imageProvider == null
+            ? Center(child: Icon(icon, size: 20, color: textPrimary))
+            : null,
+      ),
+    );
+  }
+}
+
+// ✅ 1. CALENDRIER AVEC LES RONDS (Connecté et Dynamique)
+class _CircleCalendarTransparent extends StatelessWidget {
+  final List<Map<String, dynamic>> weekDays;
+  final bool isLoading;
+
+  const _CircleCalendarTransparent({
+    required this.weekDays,
+    this.isLoading = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading || weekDays.isEmpty) {
+      return const SizedBox(
+        height: 60,
+        child: Center(child: CircularProgressIndicator(color: clubOrange)),
+      );
+    }
+
+    return Container(
+      color: Colors.transparent,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: weekDays.map((dayData) {
+          return _CircleDayBlock(
+            day: dayData["dayName"],
+            date: dayData["dayNumber"],
+            state: dayData["state"] as _DayState,
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _CircleDayBlock extends StatelessWidget {
+  final String day;
+  final String date;
+  final _DayState state;
+
+  const _CircleDayBlock({
+    required this.day,
+    required this.date,
+    required this.state,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Color bgColor;
+    Color textColor;
+    Border? border;
+    Color dayTextColor = textSecondary;
+
+    switch (state) {
+      case _DayState.completed:
+        bgColor = clubOrange;
+        textColor = Colors.white;
+        break;
+      case _DayState.missed:
+      case _DayState.future:
+        bgColor = Colors.white.withOpacity(0.08); // Gris foncé
+        textColor = textSecondary.withOpacity(0.8);
+        break;
+      case _DayState.today:
+        bgColor = Colors.transparent;
+        textColor = Colors.white;
+        dayTextColor = clubOrange;
+        border = Border.all(color: clubOrange, width: 1.5);
+        break;
+    }
+
+    return Column(
+      children: [
+        Text(
+          day,
+          style: TextStyle(
+            color: dayTextColor,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          width: 32, // Taille du rond ajustée
+          height: 32,
+          decoration: BoxDecoration(
+            color: bgColor,
+            shape: BoxShape.circle,
+            border: border,
+          ),
+          child: Center(
+            child: Text(
+              date,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RecentStatsCard extends StatelessWidget {
+  const _RecentStatsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [clubOrange, const Color(0xFFC45000)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: clubOrange.withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "STATISTIQUES RÉCENTES",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              fontStyle: FontStyle.italic,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 5,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Entraînements de la semaine",
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.85),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: const [
+                        _MiniBar(height: 50, isActive: true),
+                        SizedBox(width: 8),
+                        _MiniBar(height: 35, isActive: true),
+                        SizedBox(width: 8),
+                        _MiniBar(height: 60, isActive: true),
+                        SizedBox(width: 8),
+                        _MiniBar(height: 40, isActive: false),
+                        SizedBox(width: 8),
+                        _MiniBar(height: 20, isActive: false),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.check,
+                            size: 12,
+                            color: purpleButton,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "3/5",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            Text(
+                              "SÉANCES TERMINÉES",
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.85),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              Container(
+                width: 1,
+                height: 120,
+                color: Colors.white.withOpacity(0.25),
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+              ),
+
+              Expanded(
+                flex: 4,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: const [
+                    _StatCounter(
+                      icon: Icons.access_time_filled_rounded,
+                      value: "4h 15m",
+                      label: "TEMPS TOTAL",
+                    ),
+                    SizedBox(height: 16),
+                    _StatCounter(
+                      icon: Icons.check_circle_rounded,
+                      value: "3/5",
+                      label: "SÉANCES",
+                    ),
+                    SizedBox(height: 16),
+                    _StatCounter(
+                      icon: Icons.local_fire_department_rounded,
+                      value: "680 kcal",
+                      label: "CALORIES (MOY.)",
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniBar extends StatelessWidget {
+  final double height;
+  final bool isActive;
+
+  const _MiniBar({required this.height, required this.isActive});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 18,
+      height: height,
+      decoration: BoxDecoration(
+        color: isActive ? purpleButton : Colors.white.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(4),
+      ),
+    );
+  }
+}
+
+class _StatCounter extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+
+  const _StatCounter({
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: purpleButton, size: 14),
+        ),
+        const SizedBox(width: 10),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.85),
+                fontSize: 10,
+                letterSpacing: 0.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
 class _SectionHeader extends StatelessWidget {
   final String title;
   final String actionText;
@@ -625,8 +1119,10 @@ class _SectionHeader extends StatelessWidget {
           title,
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+            fontStyle: FontStyle.italic,
+            letterSpacing: 0.5,
           ),
         ),
         GestureDetector(
@@ -634,222 +1130,198 @@ class _SectionHeader extends StatelessWidget {
           child: Text(
             actionText,
             style: const TextStyle(
-              color: textSecondary,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// 3. CALENDRIER DE LA SEMAINE
-class _WeekCalendar extends StatelessWidget {
-  const _WeekCalendar();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: const [
-          _DayIcon(day: "Lun", date: "12", isCompleted: true),
-          _DayIcon(day: "Mar", date: "13", isCompleted: false),
-          _DayIcon(day: "Mer", date: "14", isCompleted: true),
-          _DayIcon(day: "Jeu", date: "15", isCompleted: true),
-          _DayIcon(day: "Ven", date: "16", isToday: true),
-          _DayIcon(day: "Sam", date: "17", isCompleted: false),
-          _DayIcon(day: "Dim", date: "18", isCompleted: false),
-        ],
-      ),
-    );
-  }
-}
-
-class _DayIcon extends StatelessWidget {
-  final String day;
-  final String date;
-  final bool isCompleted;
-  final bool isToday;
-
-  const _DayIcon({
-    required this.day,
-    required this.date,
-    this.isCompleted = false,
-    this.isToday = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          day,
-          style: TextStyle(
-            color: isToday ? clubOrange : textSecondary,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Container(
-          width: 36, // Compact
-          height: 36, // Compact
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isToday
-                ? clubOrange.withOpacity(0.15)
-                : (isCompleted ? Colors.transparent : const Color(0xFF2C2C2E)),
-            border: Border.all(
-              color: isToday || isCompleted ? clubOrange : Colors.transparent,
-              width: 1.5,
-            ),
-          ),
-          child: Center(
-            child: Text(
-              date,
-              style: TextStyle(
-                color: isToday ? clubOrange : Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// 4. GRAPHIQUE ACTIVITÉ (Compact)
-class _ActivityBarChart extends StatelessWidget {
-  const _ActivityBarChart();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: const [
-          _Bar(label: "Biceps", height: 35, val: "8"),
-          _Bar(label: "Pecs", height: 65, val: "16", isActive: true),
-          _Bar(label: "Dos", height: 60, val: "14", isActive: true),
-          _Bar(label: "Jambes", height: 80, val: "20"),
-          _Bar(label: "Epaules", height: 95, val: "24", isActive: true),
-          _Bar(label: "Bras", height: 50, val: "12"),
-          _Bar(label: "Cardio", height: 40, val: "10"),
-        ],
-      ),
-    );
-  }
-}
-
-class _Bar extends StatelessWidget {
-  final String label;
-  final double height;
-  final String val;
-  final bool isActive;
-
-  const _Bar({
-    required this.label,
-    required this.height,
-    required this.val,
-    this.isActive = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        if (isActive) ...[
-          Text(
-            "↑ $val",
-            style: const TextStyle(
               color: clubOrange,
-              fontSize: 10,
+              fontSize: 12,
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 4),
-        ] else ...[
-          Text(
-            val,
-            style: const TextStyle(
-              color: textSecondary,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 4),
-        ],
-        Container(
-          width: 32,
-          height: height,
-          decoration: BoxDecoration(
-            color: isActive ? clubOrange : const Color(0xFF2C2C2E),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 6.0),
-              child: Text(
-                "kg",
-                style: TextStyle(
-                  color: isActive
-                      ? Colors.white.withOpacity(0.7)
-                      : textSecondary.withOpacity(0.5),
-                  fontSize: 9,
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: const TextStyle(
-            color: textSecondary,
-            fontSize: 10,
-            fontWeight: FontWeight.w500,
-          ),
         ),
       ],
     );
   }
 }
 
-// 5. CARTE PROGRAMMES POPULAIRES (Compacte)
-class _PopularMethodCard extends StatelessWidget {
+class _TrainingCardGlass extends StatelessWidget {
   final String title;
   final int variationsCount;
-  final String rating;
+  final String averageTime;
+  final String level;
   final String imgUrl;
-  final bool isFavorite;
-  final VoidCallback onFavoriteTap;
   final VoidCallback onTap;
 
-  const _PopularMethodCard({
+  // ✅ Variables pour la gestion des favoris
+  final int routineId;
+  final bool isFavorite;
+  final VoidCallback onFavoriteTap;
+
+  const _TrainingCardGlass({
     required this.title,
     required this.variationsCount,
-    required this.rating,
+    required this.averageTime,
+    required this.level,
     required this.imgUrl,
+    required this.onTap,
+    required this.routineId,
     required this.isFavorite,
     required this.onFavoriteTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 260,
+      margin: const EdgeInsets.only(right: 16),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            imgUrl.startsWith('http')
+                ? Image.network(imgUrl, fit: BoxFit.cover)
+                : Image.asset(imgUrl, fit: BoxFit.cover),
+
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [Colors.black.withOpacity(0.9), Colors.transparent],
+                  stops: const [0.0, 0.7],
+                ),
+              ),
+            ),
+
+            // ✅ BOUTON FAVORI EN HAUT À DROITE
+            Positioned(
+              top: 12,
+              right: 12,
+              child: GestureDetector(
+                onTap: onFavoriteTap,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: isFavorite
+                            ? clubOrange.withOpacity(0.8)
+                            : Colors.black.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isFavorite
+                              ? clubOrange
+                              : Colors.white.withOpacity(0.2),
+                        ),
+                      ),
+                      child: Icon(
+                        isFavorite
+                            ? Icons.bookmark_rounded
+                            : Icons.bookmark_border_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 60,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title.toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "$variationsCount variantes • $averageTime • $level",
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.7),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            Positioned(
+              left: 16,
+              bottom: 16,
+              child: GestureDetector(
+                onTap: onTap,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(99),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(99),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.2),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Icon(
+                            Icons.play_arrow_rounded,
+                            color: purpleButton,
+                            size: 16,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            "LANCER",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NewsHeroCard extends StatelessWidget {
+  final String title;
+  final String excerpt;
+  final String date;
+  final String? imgUrl;
+  final VoidCallback onTap;
+
+  const _NewsHeroCard({
+    required this.title,
+    required this.excerpt,
+    required this.date,
+    this.imgUrl,
     required this.onTap,
   });
 
@@ -858,21 +1330,26 @@ class _PopularMethodCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 220,
-        margin: const EdgeInsets.only(right: 16),
+        height: 220,
+        width: double.infinity,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(24),
           color: surfaceColor,
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(24),
           child: Stack(
             fit: StackFit.expand,
             children: [
-              imgUrl.startsWith('http')
-                  ? Image.network(imgUrl, fit: BoxFit.cover)
-                  : Image.asset(imgUrl, fit: BoxFit.cover),
-              // Dark Gradient plus fort pour que le texte ressorte
+              if (imgUrl != null)
+                Image.network(
+                  imgUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => _fallbackImg(),
+                )
+              else
+                _fallbackImg(),
+
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -880,79 +1357,77 @@ class _PopularMethodCard extends StatelessWidget {
                     end: Alignment.topCenter,
                     colors: [
                       Colors.black.withOpacity(0.95),
+                      Colors.black.withOpacity(0.6),
                       Colors.transparent,
                     ],
-                    stops: const [0.0, 0.7],
+                    stops: const [0.0, 0.4, 0.8],
                   ),
                 ),
               ),
-              // Bookmark
+
               Positioned(
-                top: 10,
-                right: 10,
-                child: GestureDetector(
-                  onTap: onFavoriteTap,
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.4),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      isFavorite ? Icons.bookmark : Icons.bookmark_border,
-                      color: Colors.white,
-                      size: 16,
-                    ),
-                  ),
-                ),
-              ),
-              // Texts (Marges réduites)
-              Positioned(
-                bottom: 12,
+                top: 14,
                 left: 14,
-                right: 14,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.calendar_today_rounded,
+                        color: clubOrange,
+                        size: 12,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        date,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              Positioned(
+                bottom: 16,
+                left: 16,
+                right: 16,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       title,
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        height: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.fitness_center_rounded,
-                          color: textSecondary,
-                          size: 12,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          "$variationsCount Variantes",
-                          style: const TextStyle(
-                            color: textSecondary,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.star, color: textSecondary, size: 12),
-                        const SizedBox(width: 4),
-                        Text(
-                          rating,
-                          style: const TextStyle(
-                            color: textSecondary,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: 6),
+                    Text(
+                      excerpt,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.7),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                        height: 1.3,
+                      ),
                     ),
                   ],
                 ),
@@ -963,122 +1438,17 @@ class _PopularMethodCard extends StatelessWidget {
       ),
     );
   }
-}
-
-// 6. CARTE RECOMMANDATION (Utilisée pour les Actualités)
-class _RecommendationCard extends StatelessWidget {
-  final String title;
-  final String date;
-  final String? imgUrl;
-  final String tag;
-  final VoidCallback onTap;
-
-  const _RecommendationCard({
-    required this.title,
-    required this.date,
-    this.imgUrl,
-    required this.tag,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: surfaceColor,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: SizedBox(
-                width: 70,
-                height: 70,
-                child: imgUrl != null
-                    ? Image.network(
-                        imgUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _fallbackImg(),
-                      )
-                    : _fallbackImg(),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.access_time_rounded,
-                        color: textSecondary,
-                        size: 14,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        date,
-                        style: const TextStyle(
-                          color: textSecondary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2C2C2E),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                tag,
-                style: const TextStyle(
-                  color: textSecondary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _fallbackImg() {
     return Container(
       color: const Color(0xFF2C2C2E),
       child: const Center(
-        child: Icon(Icons.article_rounded, color: textSecondary, size: 24),
+        child: Icon(Icons.article_rounded, color: textSecondary, size: 40),
       ),
     );
   }
 }
 
-// ==========================================
-// ✅ BARRE DE NAVIGATION (FROSTED GLASS INTACTE)
-// ==========================================
 class _GlassBottomNav extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;
