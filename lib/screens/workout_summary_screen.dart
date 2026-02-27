@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../services/auth_service.dart';
-
 // --- COULEURS STYLE iOS DARK MODE ---
 const Color appBackground = Color(0xFF000000); // Noir profond
 const Color cardColor = Color(0xFF1C1C1E); // Gris très foncé
@@ -18,16 +16,7 @@ class WorkoutSummaryScreen extends StatefulWidget {
   State<WorkoutSummaryScreen> createState() => _WorkoutSummaryScreenState();
 }
 
-class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _xpController;
-  late final Animation<double> _xpAppear;
-  late Animation<int> _xpCount;
-
-  bool _isSavingXp = true;
-  bool _hasLeveledUp = false;
-  int _newLevel = 1;
-
+class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen> {
   int _toInt(dynamic v) =>
       v is num ? v.toInt() : int.tryParse("${v ?? 0}") ?? 0;
 
@@ -51,14 +40,6 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
     } catch (_) {
       return "Aujourd’hui";
     }
-  }
-
-  int _calcXp(double totalVolume, int totalSets, int durationSec) {
-    final base = 50;
-    final bonusVol = (totalVolume / 250).floor() * 10;
-    final bonusSets = (totalSets / 10).floor() * 10;
-    final bonusTime = (durationSec / 900).floor() * 10;
-    return base + bonusVol + bonusSets + bonusTime;
   }
 
   String _getBannerImage(String routineName) {
@@ -97,130 +78,6 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
         widget.stats['total_completed_sets'] ??
         0;
     return _toInt(raw);
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _xpController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-    _xpAppear = CurvedAnimation(
-      parent: _xpController,
-      curve: Curves.easeOutBack,
-    );
-    _xpCount = IntTween(begin: 0, end: 0).animate(_xpController);
-    _processWorkoutAndXp();
-  }
-
-  Future<void> _processWorkoutAndXp() async {
-    final totalSeconds = _toInt(widget.stats['duration_seconds']);
-    final totalVolume = _toDouble(widget.stats['total_volume']);
-    final totalSets = _getTotalSets();
-
-    final gainedXp = _calcXp(totalVolume, totalSets, totalSeconds);
-    final result = await AuthService().addXpToUser(gainedXp);
-
-    if (!mounted) return;
-
-    setState(() {
-      _isSavingXp = false;
-      if (result != null) {
-        _hasLeveledUp = result['has_leveled_up'] ?? false;
-        _newLevel = result['new_level'] ?? 1;
-      }
-      _xpCount = IntTween(begin: 0, end: gainedXp).animate(
-        CurvedAnimation(parent: _xpController, curve: Curves.easeOutExpo),
-      );
-    });
-
-    _xpController.forward();
-
-    if (_hasLeveledUp) {
-      Future.delayed(const Duration(milliseconds: 1200), () {
-        if (mounted) _showLevelUpDialog(_newLevel);
-      });
-    }
-  }
-
-  void _showLevelUpDialog(int level) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Dialog(
-        backgroundColor: cardColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: clubOrange.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.star_rounded,
-                  color: clubOrange,
-                  size: 54,
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                "NIVEAU SUPÉRIEUR !",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                "Félicitations, tes efforts paient ! Tu as atteint le niveau $level.",
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: textSecondary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w400,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 28),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: clubOrange,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Text(
-                    "Continuer",
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _xpController.dispose();
-    super.dispose();
   }
 
   @override
@@ -292,7 +149,6 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
                             ),
                           ),
                         ),
-                        // Bouton Fermer (Croix style iOS)
                         Positioned(
                           top: MediaQuery.of(context).padding.top + 10,
                           right: 16,
@@ -326,53 +182,6 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
                   padding: const EdgeInsets.fromLTRB(16, 24, 16, 40),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
-                      // Bloc d'XP (Style Pro)
-                      AnimatedBuilder(
-                        animation: _xpController,
-                        builder: (_, _) {
-                          if (_isSavingXp) {
-                            return const Center(
-                              child: CircularProgressIndicator(
-                                color: clubOrange,
-                              ),
-                            );
-                          }
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 20,
-                              horizontal: 16,
-                            ),
-                            decoration: BoxDecoration(
-                              color: cardColor,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.stars_rounded,
-                                  color: clubOrange,
-                                  size: 28,
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  "+ ${_xpCount.value} XP GAGNÉS",
-                                  style: const TextStyle(
-                                    color: clubOrange,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      // Section Statistiques
                       Padding(
                         padding: const EdgeInsets.only(left: 4, bottom: 8),
                         child: Text(
@@ -434,7 +243,6 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen>
 
                       const SizedBox(height: 24),
 
-                      // Message info
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
