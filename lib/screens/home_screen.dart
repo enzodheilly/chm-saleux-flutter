@@ -11,11 +11,11 @@ import 'progress_screen.dart';
 import '../services/auth_service.dart';
 import '../services/routine_service.dart';
 import '../services/news_service.dart';
-import 'workout_player_screen.dart';
 import 'create_routine_screen.dart';
 import 'profile_screen.dart';
 import 'program_config_screen.dart';
 import 'calendar_screen.dart';
+import 'license_screen.dart';
 
 const Color clubOrange = Color(0xFFF57809);
 const Color appBackground = Color(0xFF000000);
@@ -59,6 +59,10 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _fetchCoreData();
     _fetchNews();
+  }
+
+  void _handleBottomNavTap(int index) {
+    setState(() => _selectedIndex = index);
   }
 
   Future<void> _fetchCoreData() async {
@@ -311,7 +315,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+              padding: const EdgeInsets.fromLTRB(16, 28, 16, 10),
               child: _TopBar(
                 userName: currentUserName,
                 greeting: _getGreeting(),
@@ -348,12 +352,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           style: TextStyle(color: textPrimary),
                         ),
                       ),
-                      const Center(
-                        child: Text(
-                          "ABONNEMENT",
-                          style: TextStyle(color: textPrimary),
-                        ),
-                      ),
+                      const LicenseScreen(),
                     ],
                   ),
                   Consumer<WorkoutManager>(
@@ -373,7 +372,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     bottom: 24 + MediaQuery.of(context).padding.bottom,
                     child: _GlassBottomNav(
                       currentIndex: _selectedIndex,
-                      onTap: (i) => setState(() => _selectedIndex = i),
+                      onTap: _handleBottomNavTap,
                     ),
                   ),
                 ],
@@ -1102,8 +1101,6 @@ class _RecentStatsCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-
-                    // ✅ Version responsive : plus d'overflow
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: List.generate(7, (index) {
@@ -1118,7 +1115,6 @@ class _RecentStatsCard extends StatelessWidget {
                         );
                       }),
                     ),
-
                     const SizedBox(height: 16),
                     Row(
                       children: [
@@ -1688,7 +1684,7 @@ class _GlassBottomNav extends StatelessWidget {
                 ),
                 _NavItem(
                   icon: Icons.card_membership_rounded,
-                  label: "Abonnement",
+                  label: "License",
                   index: 4,
                   currentIndex: currentIndex,
                   onTap: onTap,
