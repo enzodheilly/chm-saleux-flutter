@@ -5,6 +5,7 @@ import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/workout_manager.dart';
 import 'screens/splash_screen.dart'; // ✅ AJOUT : Importe ton fichier d'animation
+import 'theme/app_theme.dart';
 
 void main() {
   runApp(
@@ -24,9 +25,12 @@ class MyApp extends StatelessWidget {
       title: 'CHM Saleux',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // J'ai mis le fond noir par défaut pour éviter le flash blanc entre les pages
-        scaffoldBackgroundColor: const Color(0xFF06060B),
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        // Fond noir par défaut pour éviter le flash blanc entre les pages
+        scaffoldBackgroundColor: AppColors.bg,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: AppColors.accent,
+          brightness: Brightness.dark,
+        ),
         useMaterial3: true,
       ),
 

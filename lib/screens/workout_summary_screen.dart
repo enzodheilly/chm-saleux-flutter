@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
+import '../widgets/design_system.dart';
 
 // --- COULEURS STYLE iOS DARK MODE ---
-const Color appBackground = Color(0xFF000000); // Noir profond
-const Color cardColor = Color(0xFF1C1C1E); // Gris très foncé
-const Color dividerColor = Color(0xFF2C2C2E);
-const Color textSecondary = Color(0xFF8E8E93);
-const Color clubOrange = Color(0xFFF57809);
+const Color appBackground = AppColors.bg;
+const Color cardColor = AppColors.surface;
+const Color dividerColor = AppColors.line;
+const Color textSecondary = AppColors.textSecondary;
+const Color clubOrange = AppColors.accent;
 
 class WorkoutSummaryScreen extends StatefulWidget {
   final Map<String, dynamic> stats;
@@ -120,8 +122,8 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen> {
                     title: Text(
                       routineName,
                       style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w800,
                         fontSize: 22,
                         letterSpacing: -0.5,
                       ),
@@ -159,12 +161,12 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen> {
                             child: Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF2C2C2E).withOpacity(0.8),
+                                color: AppColors.surfaceAlt.withOpacity(0.8),
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(
                                 Icons.close,
-                                color: Colors.white,
+                                color: AppColors.textPrimary,
                                 size: 20,
                               ),
                             ),
@@ -182,23 +184,17 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 24, 16, 40),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
-                      Padding(
-                        padding: const EdgeInsets.only(left: 4, bottom: 8),
-                        child: Text(
-                          "RÉSUMÉ DE LA SÉANCE",
-                          style: TextStyle(
-                            color: textSecondary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
+                      const Padding(
+                        padding: EdgeInsets.only(left: 4, bottom: 12),
+                        child: SectionHeader(title: 'Résumé de la séance'),
                       ),
+                      const SizedBox(height: 2),
 
                       Container(
                         decoration: BoxDecoration(
                           color: cardColor,
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          border: Border.all(color: AppColors.line),
                         ),
                         child: Column(
                           children: [
@@ -287,22 +283,10 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen> {
             ),
             child: SizedBox(
               width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
+              child: PrimaryButton(
+                label: "Retour à l'accueil",
                 onPressed: () =>
                     Navigator.of(context).popUntil((route) => route.isFirst),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: clubOrange,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: const Text(
-                  "Retour à l'accueil",
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                ),
               ),
             ),
           ),
@@ -322,12 +306,12 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          Icon(icon, color: Colors.white, size: 22),
+          Icon(icon, color: AppColors.textPrimary, size: 22),
           const SizedBox(width: 14),
           Text(
             label,
             style: const TextStyle(
-              color: Colors.white,
+              color: AppColors.textPrimary,
               fontSize: 16,
               fontWeight: FontWeight.w400,
             ),

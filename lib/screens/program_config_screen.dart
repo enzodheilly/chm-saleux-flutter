@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'workout_player_screen.dart';
+import '../theme/app_theme.dart';
+import '../widgets/design_system.dart';
 
-const Color clubOrange = Color(0xFFF57809);
-const Color darkBg = Color(0xFF0B0B0F);
-const Color surfaceColor = Color(
-  0xFF1C1C22,
-); // Gris très sombre pour les cartes
+// Alias locaux vers le système de design partagé (AppColors) — conservés
+// pour ne pas avoir à renommer tous les usages dans ce fichier.
+const Color clubOrange = AppColors.accent;
+const Color darkBg = AppColors.bg;
+const Color surfaceColor = AppColors.surface;
 
 class ProgramConfigScreen extends StatefulWidget {
   final String muscleGroup;
@@ -163,31 +165,27 @@ class _ProgramConfigScreenState extends State<ProgramConfigScreen> {
                       const Spacer(),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
+                          horizontal: 12,
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
                           color: Colors.black.withOpacity(0.4),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
                           border: Border.all(
                             color: Colors.white.withOpacity(0.10),
                           ),
                         ),
                         child: Row(
                           children: [
-                            Icon(
-                              Icons.tune_rounded,
-                              size: 14,
-                              color: Colors.white.withOpacity(0.8),
-                            ),
-                            const SizedBox(width: 6),
+                            Container(width: 3, height: 11, color: clubOrange),
+                            const SizedBox(width: 8),
                             Text(
                               "PERSONNALISATION",
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.9),
-                                fontWeight: FontWeight.w900,
+                                fontWeight: FontWeight.w700,
                                 fontSize: 11,
-                                letterSpacing: 0.8,
+                                letterSpacing: 1.2,
                               ),
                             ),
                           ],
@@ -211,10 +209,10 @@ class _ProgramConfigScreenState extends State<ProgramConfigScreen> {
                       Text(
                         widget.muscleGroup.toUpperCase(),
                         style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 38,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -1.0,
+                          color: AppColors.textPrimary,
+                          fontSize: 34,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.5,
                           height: 1.1,
                         ),
                       ),
@@ -232,10 +230,7 @@ class _ProgramConfigScreenState extends State<ProgramConfigScreen> {
                       const SizedBox(height: 32),
 
                       // ✅ SECTION OBJECTIF
-                      const _PremiumSectionHeader(
-                        title: "Objectif principal",
-                        icon: Icons.flag_rounded,
-                      ),
+                      const _PremiumSectionHeader(title: "Objectif principal"),
                       const SizedBox(height: 16),
                       _GlassGoalSelector(
                         selected: selectedGoal,
@@ -246,10 +241,7 @@ class _ProgramConfigScreenState extends State<ProgramConfigScreen> {
                       const SizedBox(height: 32),
 
                       // ✅ SECTION NIVEAU
-                      const _PremiumSectionHeader(
-                        title: "Niveau de difficulté",
-                        icon: Icons.local_fire_department_rounded,
-                      ),
+                      const _PremiumSectionHeader(title: "Niveau de difficulté"),
                       const SizedBox(height: 16),
                       _GlassLevelSelector(
                         selected: selectedLevel,
@@ -265,62 +257,40 @@ class _ProgramConfigScreenState extends State<ProgramConfigScreen> {
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: surfaceColor,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.05),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            border: Border.all(color: AppColors.line),
                           ),
                           child: Row(
                             children: [
-                              Container(
-                                width: 48,
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  color: clubOrange.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: const Icon(
-                                  Icons.timer_outlined,
-                                  color: clubOrange,
-                                  size: 24,
-                                ),
+                              const Icon(
+                                Icons.timer_outlined,
+                                color: AppColors.accent,
+                                size: 22,
                               ),
                               const SizedBox(width: 16),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
+                                    const Text(
                                       "Durée estimée de la séance",
-                                      style: TextStyle(
-                                        color: Colors.white.withOpacity(0.6),
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 12,
-                                      ),
+                                      style: AppText.label,
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
                                       "${matchingProgram['estimatedDurationMin'] ?? 60} minutes",
                                       style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w900,
+                                        color: AppColors.textPrimary,
+                                        fontWeight: FontWeight.w800,
                                         fontSize: 18,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                              Icon(
-                                Icons.check_circle_rounded,
-                                color: Colors.greenAccent.shade400,
-                                size: 28,
+                              const StatusDot(
+                                color: AppColors.success,
+                                label: "Prêt",
                               ),
                             ],
                           ),
@@ -370,13 +340,12 @@ class _ProgramConfigScreenState extends State<ProgramConfigScreen> {
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: clubOrange,
-                            foregroundColor: Colors.white,
+                            foregroundColor: AppColors.bg,
                             padding: const EdgeInsets.symmetric(vertical: 18),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(AppRadius.sm),
                             ),
-                            elevation: 8,
-                            shadowColor: clubOrange.withOpacity(0.5),
+                            elevation: 0,
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -384,9 +353,9 @@ class _ProgramConfigScreenState extends State<ProgramConfigScreen> {
                               const Text(
                                 "DÉMARRER LA SÉANCE",
                                 style: TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 16,
-                                  letterSpacing: 0.5,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15,
+                                  letterSpacing: 1,
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -396,13 +365,13 @@ class _ProgramConfigScreenState extends State<ProgramConfigScreen> {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(8),
+                                  color: AppColors.bg.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(AppRadius.sm / 2),
                                 ),
                                 child: Text(
                                   "${matchingProgram['estimatedDurationMin']} min",
                                   style: const TextStyle(
-                                    fontWeight: FontWeight.w800,
+                                    fontWeight: FontWeight.w700,
                                     fontSize: 12,
                                   ),
                                 ),
@@ -416,25 +385,25 @@ class _ProgramConfigScreenState extends State<ProgramConfigScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 18),
                           decoration: BoxDecoration(
                             color: surfaceColor,
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
                             border: Border.all(
-                              color: Colors.redAccent.withOpacity(0.3),
+                              color: AppColors.danger.withOpacity(0.3),
                             ),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.error_outline_rounded,
-                                color: Colors.redAccent.shade200,
+                                color: AppColors.danger,
                                 size: 20,
                               ),
                               const SizedBox(width: 10),
                               Text(
                                 "Aucune séance pour ces critères",
                                 style: TextStyle(
-                                  color: Colors.redAccent.shade100,
-                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.danger.withOpacity(0.9),
+                                  fontWeight: FontWeight.w700,
                                   fontSize: 15,
                                 ),
                               ),
@@ -452,7 +421,7 @@ class _ProgramConfigScreenState extends State<ProgramConfigScreen> {
 
   Widget _fallbackImage() {
     return Container(
-      color: const Color(0xFF1C1C1E),
+      color: AppColors.surface,
       child: Center(
         child: Icon(
           Icons.fitness_center_rounded,
@@ -467,37 +436,15 @@ class _ProgramConfigScreenState extends State<ProgramConfigScreen> {
 // ==========================================
 // HEADER DE SECTION
 // ==========================================
+// Trait d'accent + libellé tracké — remplace l'icône répétée dans une
+// pastille colorée par le composant partagé [SectionHeader].
 class _PremiumSectionHeader extends StatelessWidget {
   final String title;
-  final IconData icon;
 
-  const _PremiumSectionHeader({required this.title, required this.icon});
+  const _PremiumSectionHeader({required this.title});
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: clubOrange.withOpacity(0.15),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, size: 16, color: clubOrange),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          title.toUpperCase(),
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
-            fontSize: 14,
-            letterSpacing: 0.5,
-          ),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => SectionHeader(title: title);
 }
 
 // ==========================================
@@ -546,40 +493,22 @@ class _GlassGoalSelector extends StatelessWidget {
           child: GestureDetector(
             onTap: () => onSelect(opt['key'] as String),
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
+              duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: isSelected ? accent.withOpacity(0.15) : surfaceColor,
-                borderRadius: BorderRadius.circular(20),
+                color: isSelected ? accent.withOpacity(0.08) : surfaceColor,
+                borderRadius: BorderRadius.circular(AppRadius.md),
                 border: Border.all(
-                  color: isSelected ? accent : Colors.white.withOpacity(0.05),
-                  width: isSelected ? 2 : 1,
+                  color: isSelected ? accent : AppColors.line,
+                  width: isSelected ? 1.5 : 1,
                 ),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: accent.withOpacity(0.2),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                    : [],
               ),
               child: Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? accent
-                          : Colors.white.withOpacity(0.05),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      opt['icon'] as IconData,
-                      color: isSelected ? Colors.white : Colors.white54,
-                      size: 20,
-                    ),
+                  Icon(
+                    opt['icon'] as IconData,
+                    color: isSelected ? accent : Colors.white54,
+                    size: 20,
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -592,8 +521,9 @@ class _GlassGoalSelector extends StatelessWidget {
                             color: isSelected
                                 ? Colors.white
                                 : Colors.white.withOpacity(0.8),
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w800,
                             fontSize: 14,
+                            letterSpacing: 0.2,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -611,22 +541,22 @@ class _GlassGoalSelector extends StatelessWidget {
                   if (isSelected)
                     Container(
                       margin: const EdgeInsets.only(left: 8),
-                      child: const Icon(
+                      child: Icon(
                         Icons.check_circle_rounded,
-                        color: clubOrange,
-                        size: 24,
+                        color: accent,
+                        size: 22,
                       ),
                     )
                   else
                     Container(
                       margin: const EdgeInsets.only(left: 8),
-                      width: 24,
-                      height: 24,
+                      width: 20,
+                      height: 20,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.2),
-                          width: 2,
+                          color: AppColors.line,
+                          width: 1.5,
                         ),
                       ),
                     ),
@@ -668,34 +598,25 @@ class _GlassLevelSelector extends StatelessWidget {
             child: GestureDetector(
               onTap: () => onSelect(lvl['key']!),
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
+                duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 decoration: BoxDecoration(
                   color: isSelected ? accent : surfaceColor,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                   border: Border.all(
-                    color: isSelected ? accent : Colors.white.withOpacity(0.05),
+                    color: isSelected ? accent : AppColors.line,
                     width: 1.5,
                   ),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: accent.withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ]
-                      : [],
                 ),
                 child: Center(
                   child: Text(
                     lvl['label']!,
                     style: TextStyle(
                       color: isSelected
-                          ? Colors.white
+                          ? AppColors.bg
                           : Colors.white.withOpacity(0.6),
                       fontWeight: isSelected
-                          ? FontWeight.w900
+                          ? FontWeight.w800
                           : FontWeight.w700,
                       fontSize: 12,
                     ),

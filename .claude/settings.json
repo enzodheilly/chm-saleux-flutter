@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter --version)",
+      "Bash(mkdir -p /Users/dheillyenzo/ChmSaleuxApp/chm_mobile/lib/widgets)",
+      "Skill(run)",
+      "Skill(run:*)",
+      "Bash(flutter run *)",
+      "Bash(flutter devices *)"
+    ],
+    "additionalDirectories": [
+      "/Users/dheillyenzo/ChmSaleuxApp/chm_mobile/lib/widgets"
+    ]
+  }
+}

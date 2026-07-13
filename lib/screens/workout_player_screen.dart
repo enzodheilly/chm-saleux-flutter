@@ -1,48 +1,47 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:provider/provider.dart';
 import '../services/routine_service.dart';
 import '../services/workout_manager.dart';
+import '../theme/app_theme.dart';
+import '../widgets/design_system.dart';
 
-const Color clubOrange = Color(0xFFF57809);
-const Color darkBg = Color(0xFF0B0B0F);
+const Color clubOrange = AppColors.accent;
+const Color darkBg = AppColors.bg;
 
 // =====================
 // TYPO (cohérence Progrès)
 // =====================
 const TextStyle kScreenTitle = TextStyle(
-  color: Colors.white,
+  color: AppColors.textPrimary,
   fontSize: 24,
-  fontWeight: FontWeight.w900,
-  fontStyle: FontStyle.italic,
+  fontWeight: FontWeight.w800,
   letterSpacing: 0.4,
 );
 
 const TextStyle kSectionTitle = TextStyle(
-  color: Colors.white,
+  color: AppColors.textPrimary,
   fontSize: 18,
-  fontWeight: FontWeight.w900,
-  fontStyle: FontStyle.italic,
+  fontWeight: FontWeight.w800,
   letterSpacing: -0.2,
 );
 
 const TextStyle kLabelSmall = TextStyle(
-  color: Colors.white54,
+  color: AppColors.textSecondary,
   fontSize: 10,
-  fontWeight: FontWeight.w900,
+  fontWeight: FontWeight.w700,
   letterSpacing: 1.1,
 );
 
 const TextStyle kMeta = TextStyle(
-  color: Colors.white70,
+  color: AppColors.textSecondary,
   fontSize: 12,
   fontWeight: FontWeight.w700,
 );
 
 const TextStyle kButtonText = TextStyle(
-  color: Colors.white,
-  fontWeight: FontWeight.w900,
+  color: AppColors.textPrimary,
+  fontWeight: FontWeight.w800,
   fontSize: 12,
   letterSpacing: 0.8,
 );
@@ -140,13 +139,13 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1C1C22),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: AppColors.surfaceAlt,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
         title: Text(
           "Démo : $exerciseName",
           style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w900,
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w800,
           ),
         ),
         content: Column(
@@ -155,9 +154,9 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
             Container(
               height: 200,
               decoration: BoxDecoration(
-                color: Colors.black,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                color: AppColors.bg,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: AppColors.line),
               ),
               child: const Center(
                 child: Icon(
@@ -171,7 +170,7 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
             const Text(
               "La vidéo de démonstration sera intégrée ici.",
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white70),
+              style: TextStyle(color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -231,9 +230,9 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
           decoration: BoxDecoration(
             color: Colors.black.withOpacity(0.4),
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
+            border: Border.all(color: AppColors.line),
           ),
-          child: const Icon(Icons.close, color: Colors.white, size: 18),
+          child: const Icon(Icons.close, color: AppColors.textPrimary, size: 18),
         ),
         // ✅ CORRECTION ICI : Retour à l'accueil
         onPressed: () => Navigator.popUntil(context, (route) => route.isFirst),
@@ -290,8 +289,8 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(color: AppColors.line),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -305,7 +304,7 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
                     Container(
                       width: 1,
                       height: 40,
-                      color: Colors.white.withOpacity(0.1),
+                      color: AppColors.line,
                     ),
                     _StatItem(
                       label: "VOLUME",
@@ -315,7 +314,7 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
                     Container(
                       width: 1,
                       height: 40,
-                      color: Colors.white.withOpacity(0.1),
+                      color: AppColors.line,
                     ),
                     _StatItem(
                       label: "SÉRIES",
@@ -346,38 +345,11 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
             Expanded(
               child: Text(exerciseName.toUpperCase(), style: kSectionTitle),
             ),
-            GestureDetector(
-              onTap: () => _showVideoDemo(exerciseName),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white.withOpacity(0.2)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.play_circle_outline_rounded,
-                      color: clubOrange,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      "DÉMO",
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontWeight: FontWeight.w900,
-                        fontSize: 10,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            GhostButton(
+              label: "Démo",
+              icon: Icons.play_circle_outline_rounded,
+              onPressed: () => _showVideoDemo(exerciseName),
+              color: clubOrange,
             ),
           ],
         ),
@@ -387,19 +359,9 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
         // Conteneur des séries
         Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF1C1C22),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.05),
-              width: 1.5,
-            ),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 10,
-                offset: const Offset(0, 5),
-              ),
-            ],
+            color: AppColors.surface,
+            border: Border.all(color: AppColors.line),
+            borderRadius: BorderRadius.circular(AppRadius.md),
           ),
           child: Column(
             children: List.generate(
@@ -439,7 +401,7 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
           SizedBox(
             width: 35,
             child: Center(
-              child: Icon(Icons.done_all, color: Colors.white38, size: 14),
+              child: Icon(Icons.done_all, color: AppColors.textSecondary, size: 14),
             ),
           ),
         ],
@@ -465,11 +427,11 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
         children: [
           SlidableAction(
             onPressed: (context) => manager.removeSet(exIndex, setIndex),
-            backgroundColor: Colors.redAccent,
-            foregroundColor: Colors.white,
+            backgroundColor: AppColors.danger,
+            foregroundColor: AppColors.textPrimary,
             icon: Icons.delete_outline_rounded,
             borderRadius: isLast
-                ? const BorderRadius.only(bottomRight: Radius.circular(16))
+                ? const BorderRadius.only(bottomRight: Radius.circular(AppRadius.md))
                 : BorderRadius.zero,
           ),
         ],
@@ -480,8 +442,8 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
           color: isDone ? clubOrange.withOpacity(0.1) : Colors.transparent,
           border: isLast
               ? null
-              : Border(
-                  bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
+              : const Border(
+                  bottom: BorderSide(color: AppColors.line),
                 ),
         ),
         child: Row(
@@ -492,14 +454,14 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: isDone ? clubOrange : Colors.white.withOpacity(0.05),
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
                 child: Text(
                   "${setIndex + 1}",
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: isDone ? Colors.white : Colors.white70,
-                    fontWeight: FontWeight.w900,
+                    color: isDone ? AppColors.bg : AppColors.textSecondary,
+                    fontWeight: FontWeight.w800,
                     fontSize: 12,
                   ),
                 ),
@@ -526,7 +488,7 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
                 width: 35,
                 child: Icon(
                   isDone ? Icons.check_circle_rounded : Icons.circle_outlined,
-                  color: isDone ? clubOrange : Colors.white24,
+                  color: isDone ? clubOrange : AppColors.textSecondary.withOpacity(0.4),
                   size: 28,
                 ),
               ),
@@ -546,7 +508,7 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
             Expanded(
               child: _buildGlassActionBtn(
                 "Paramètres",
-                Colors.white.withOpacity(0.05),
+                AppColors.surface,
                 icon: Icons.settings_rounded,
                 onTap: () {},
               ),
@@ -555,8 +517,8 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
             Expanded(
               child: _buildGlassActionBtn(
                 "Abandonner",
-                Colors.redAccent.withOpacity(0.1),
-                textColor: Colors.redAccent,
+                AppColors.danger.withOpacity(0.08),
+                textColor: AppColors.danger,
                 icon: Icons.close_rounded,
                 onTap: () {
                   manager.stopWorkout();
@@ -574,37 +536,34 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
   Widget _buildGlassActionBtn(
     String label,
     Color color, {
-    Color textColor = Colors.white,
+    Color textColor = AppColors.textPrimary,
     IconData? icon,
     VoidCallback? onTap,
   }) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: InkWell(
-          onTap: onTap,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: textColor.withOpacity(0.15)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (icon != null)
-                  Icon(icon, color: textColor.withOpacity(0.9), size: 18),
-                if (icon != null) const SizedBox(width: 8),
-                Text(
-                  label.toUpperCase(),
-                  textAlign: TextAlign.center,
-                  style: kButtonText.copyWith(color: textColor),
-                ),
-              ],
-            ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: textColor.withOpacity(0.15)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (icon != null) Icon(icon, color: textColor, size: 18),
+              if (icon != null) const SizedBox(width: 8),
+              Text(
+                label.toUpperCase(),
+                textAlign: TextAlign.center,
+                style: kButtonText.copyWith(color: textColor),
+              ),
+            ],
           ),
         ),
       ),
@@ -620,16 +579,14 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: clubOrange,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: clubOrange.withOpacity(0.4),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(AppRadius.sm),
         ),
-        child: const Text("TERMINER", style: kButtonText),
+        child: const Text("TERMINER", style: TextStyle(
+          color: AppColors.bg,
+          fontWeight: FontWeight.w800,
+          fontSize: 12,
+          letterSpacing: 0.8,
+        )),
       ),
     );
   }
@@ -691,13 +648,13 @@ class _StableInputState extends State<StableInput> {
         margin: const EdgeInsets.only(right: 8),
         decoration: BoxDecoration(
           color: widget.isLocked
-              ? Colors.white.withOpacity(0.02)
-              : Colors.white.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(10),
+              ? AppColors.surface
+              : AppColors.surfaceAlt,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
           border: Border.all(
             color: widget.isLocked
                 ? clubOrange.withOpacity(0.3)
-                : Colors.white.withOpacity(0.15),
+                : AppColors.line,
             width: widget.isLocked ? 1.5 : 1,
           ),
         ),
@@ -707,8 +664,8 @@ class _StableInputState extends State<StableInput> {
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: widget.isLocked ? clubOrange : Colors.white,
-            fontWeight: FontWeight.w900,
+            color: widget.isLocked ? clubOrange : AppColors.textPrimary,
+            fontWeight: FontWeight.w800,
             fontSize: 15,
           ),
           decoration: InputDecoration(
@@ -717,7 +674,7 @@ class _StableInputState extends State<StableInput> {
             border: InputBorder.none,
             hintText: widget.hint,
             hintStyle: TextStyle(
-              color: Colors.white.withOpacity(0.2),
+              color: AppColors.textSecondary.withOpacity(0.5),
               fontSize: 13,
             ),
           ),
@@ -736,7 +693,7 @@ class _StatItem extends StatelessWidget {
   const _StatItem({
     required this.label,
     required this.value,
-    this.valueColor = Colors.white,
+    this.valueColor = AppColors.textPrimary,
     required this.icon,
   });
 
@@ -744,7 +701,7 @@ class _StatItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(icon, color: Colors.white54, size: 16),
+        Icon(icon, color: AppColors.textSecondary, size: 16),
         const SizedBox(height: 6),
         Text(
           value,
