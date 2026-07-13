@@ -1,31 +1,36 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../services/routine_service.dart';
+import '../widgets/glass_surface.dart';
+import '../theme/app_theme.dart';
+import '../widgets/design_system.dart';
 import 'workout_player_screen.dart';
 import 'program_config_screen.dart';
 
 // =========================
 // COULEURS DU THÈME GLOBALES
+// (pointent vers le système de design partagé — noms locaux conservés
+// pour ne pas avoir à renommer tous les usages dans ce fichier)
 // =========================
-const Color clubOrange = Color(0xFFF57809);
-const Color darkBg = Color(
-  0xFF000000,
-); // ✅ Modifié pour correspondre à la page d'accueil
-const Color purpleButton = Color(0xFF5E35B1);
-const Color surfaceColor = Color(0xFF222222);
-const Color textPrimary = Color(0xFFFFFFFF);
-const Color textSecondary = Color(0xFFA0A5B1);
-const Color softBorder = Color(0xFF333333);
+const Color clubOrange = AppColors.accent;
+const Color darkBg = AppColors.bg;
+const Color purpleButton = AppColors.accent;
+const Color surfaceColor = AppColors.surface;
+const Color textPrimary = AppColors.textPrimary;
+const Color textSecondary = AppColors.textSecondary;
+const Color softBorder = AppColors.line;
 
-/// ✅ Alias de compatibilité
+/// Alias de compatibilité
 class TrainingScreen extends StatelessWidget {
   const TrainingScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const CreateRoutineScreen();
-  }
+  Widget build(BuildContext context) => const CreateRoutineScreen();
 }
+
+// =========================
+// SCREEN PRINCIPAL
+// =========================
 
 class CreateRoutineScreen extends StatefulWidget {
   const CreateRoutineScreen({super.key});
@@ -65,7 +70,7 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
   final List<_DraftRoutineExercise> _exercises = [];
 
   // =========================
-  // LISTE DE TES CATÉGORIES FIXES
+  // CATÉGORIES FIXES
   // =========================
   final List<Map<String, dynamic>> _muscleCategories = [
     {
@@ -154,6 +159,14 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
       setState(() {
         _myRoutines = routines;
         _isLoadingRoutines = false;
+        // ✅ FIX BUG 3 — On nettoie l'optimistic si la routine est confirmée côté API
+        if (_optimisticCreatedRoutine != null) {
+          final optimisticId = _toInt(_optimisticCreatedRoutine!['id']);
+          final exists =
+              optimisticId != null &&
+              _myRoutines.any((r) => _toInt(_mapify(r)['id']) == optimisticId);
+          if (exists) _optimisticCreatedRoutine = null;
+        }
       });
     } catch (e) {
       if (!mounted) return;
@@ -164,9 +177,8 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
   List<dynamic> _effectiveRoutines() {
     if (_optimisticCreatedRoutine == null) return _myRoutines;
     final optimisticId = _toInt(_optimisticCreatedRoutine!['id']);
-    if (optimisticId == null) {
+    if (optimisticId == null)
       return [_optimisticCreatedRoutine!, ..._myRoutines];
-    }
     final exists = _myRoutines.any(
       (r) => _toInt(_mapify(r)['id']) == optimisticId,
     );
@@ -185,7 +197,7 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
   }
 
   // =========================
-  // FAVORIS (catégories only)
+  // FAVORIS (catégories)
   // =========================
 
   List<Map<String, dynamic>> get _allCategories => [
@@ -194,10 +206,12 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
   ];
 
   List<Map<String, dynamic>> _favoriteCategories() {
-    return _allCategories.where((c) {
-      final t = (c['title'] ?? '').toString();
-      return _favoriteCategoryTitles.contains(t);
-    }).toList();
+    return _allCategories
+        .where(
+          (c) =>
+              _favoriteCategoryTitles.contains((c['title'] ?? '').toString()),
+        )
+        .toList();
   }
 
   // =========================
@@ -206,7 +220,7 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
 
   void _enterCreateMode() {
     setState(() {
-      _currentTabIndex = 2; // ✅ Mes routines
+      _currentTabIndex = 2;
       _isCreateMode = true;
       _resetDraft();
       _editingRoutineId = null;
@@ -251,108 +265,73 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
 
   String _getCategoryDescription(String title) {
     final t = title.toLowerCase();
-    if (t.contains("pec") || t.contains("push")) {
+    if (t.contains("pec") || t.contains("push"))
       return "Travaille ta force de poussée et sculpte un torse puissant.";
-    }
-    if (t.contains("dos") || t.contains("pull")) {
+    if (t.contains("dos") || t.contains("pull"))
       return "Construis un dos large et épais grâce à ces tirages ciblés.";
-    }
-    if (t.contains("jambe") || t.contains("bas")) {
+    if (t.contains("jambe") || t.contains("bas"))
       return "Le fondement de ta force. Des quadriceps aux mollets.";
-    }
-    if (t.contains("bras") || t.contains("biceps") || t.contains("triceps")) {
+    if (t.contains("bras") || t.contains("biceps") || t.contains("triceps"))
       return "Isole tes muscles pour des bras massifs et dessinés.";
-    }
-    if (t.contains("cardio") || t.contains("run")) {
+    if (t.contains("cardio") || t.contains("run"))
       return "Améliore ton endurance et brûle un maximum de calories.";
-    }
-    if (t.contains("mobil")) {
+    if (t.contains("mobil"))
       return "Gagne en souplesse, récupère mieux et préviens les blessures.";
-    }
-    if (t.contains("perte") || t.contains("poids")) {
+    if (t.contains("perte") || t.contains("poids"))
       return "Des circuits haute intensité pour fondre efficacement.";
-    }
-    if (t.contains("full") || t.contains("body")) {
+    if (t.contains("full") || t.contains("body"))
       return "Sollicite tout ton corps pour un développement harmonieux.";
-    }
     return "Repousse tes limites avec ces entraînements ciblés spécialement pour toi.";
   }
 
   String _getImageForGroup(String groupName) {
     final name = groupName.toLowerCase().trim();
-    if (name.contains("pec") ||
-        name.contains("chest") ||
-        name.contains("push")) {
+    if (name.contains("pec") || name.contains("chest") || name.contains("push"))
       return "assets/images/pecs.jpg";
-    }
-    if (name.contains("dos") ||
-        name.contains("back") ||
-        name.contains("pull")) {
+    if (name.contains("dos") || name.contains("back") || name.contains("pull"))
       return "assets/images/dos.jpg";
-    }
-    if (name.contains("jambe") ||
-        name.contains("leg") ||
-        name.contains("bas")) {
+    if (name.contains("jambe") || name.contains("leg") || name.contains("bas"))
       return "assets/images/jambes.jpg";
-    }
     if (name.contains("bras") ||
         name.contains("arm") ||
         name.contains("biceps") ||
-        name.contains("triceps")) {
+        name.contains("triceps"))
       return "assets/images/bras.jpg";
-    }
-    if (name.contains("epaule") || name.contains("épaule")) {
+    if (name.contains("epaule") || name.contains("épaule"))
       return "assets/images/epaules.jpg";
-    }
-    if (name.contains("abdo") || name.contains("abs")) {
+    if (name.contains("abdo") || name.contains("abs"))
       return "assets/images/abdos.jpg";
-    }
-    if (name.contains("cardio") || name.contains("run")) {
+    if (name.contains("cardio") || name.contains("run"))
       return "assets/images/cardio.jpg";
-    }
-    if (name.contains("mobil")) {
-      return "assets/images/mobilite.jpg";
-    }
-    if (name.contains("perte") || name.contains("poids")) {
+    if (name.contains("mobil")) return "assets/images/mobilite.jpg";
+    if (name.contains("perte") || name.contains("poids"))
       return "assets/images/perte_poids.jpg";
-    }
-    if (name.contains("full") ||
-        name.contains("body") ||
-        name.contains("haut")) {
+    if (name.contains("full") || name.contains("body") || name.contains("haut"))
       return "assets/images/fullbody.jpg";
-    }
     return "assets/images/default.jpg";
   }
 
   IconData _getIconForCategory(String category) {
     final c = category.toLowerCase();
     if (c.contains('pec') || c.contains('push')) return Icons.fitness_center;
-    if (c.contains('dos') || c.contains('back') || c.contains('pull')) {
+    if (c.contains('dos') || c.contains('back') || c.contains('pull'))
       return Icons.accessibility_new_rounded;
-    }
-    if (c.contains('jambe') || c.contains('leg')) {
+    if (c.contains('jambe') || c.contains('leg'))
       return Icons.directions_run_rounded;
-    }
-    if (c.contains('bras') || c.contains('arm')) {
+    if (c.contains('bras') || c.contains('arm'))
       return Icons.sports_gymnastics_rounded;
-    }
-    if (c.contains('triceps') || c.contains('avant')) {
+    if (c.contains('triceps') || c.contains('avant'))
       return Icons.sports_gymnastics_rounded;
-    }
-    if (c.contains('epaule') || c.contains('épaule')) {
+    if (c.contains('epaule') || c.contains('épaule'))
       return Icons.accessibility_rounded;
-    }
     if (c.contains('abdo')) return Icons.sports_martial_arts_rounded;
-    if (c.contains('cardio') || c.contains('run')) {
+    if (c.contains('cardio') || c.contains('run'))
       return Icons.monitor_heart_rounded;
-    }
     if (c.contains('mobil')) return Icons.self_improvement_rounded;
-    if (c.contains('perte') || c.contains('poids')) {
+    if (c.contains('perte') || c.contains('poids'))
       return Icons.monitor_weight_rounded;
-    }
-    if (c.contains('full') || c.contains('body')) {
+    if (c.contains('full') || c.contains('body'))
       return Icons.accessibility_new_rounded;
-    }
     return Icons.fitness_center_rounded;
   }
 
@@ -367,6 +346,7 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
     );
     if (picked == null) return;
     if (_exercises.any((e) => e.exerciseId == picked.id)) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Cet exercice est déjà dans la routine.")),
       );
@@ -407,18 +387,16 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
   }
 
   List<Map<String, dynamic>> _buildExercisePayloadFromDraft() {
-    final payload = <Map<String, dynamic>>[];
-    for (int i = 0; i < _exercises.length; i++) {
-      final e = _exercises[i];
-      payload.add({
-        "exerciseId": e.exerciseId,
-        "order": i + 1,
-        "sets": e.sets,
-        "reps": e.reps,
-        "restSec": e.restSec,
-      });
-    }
-    return payload;
+    return [
+      for (int i = 0; i < _exercises.length; i++)
+        {
+          "exerciseId": _exercises[i].exerciseId,
+          "order": i + 1,
+          "sets": _exercises[i].sets,
+          "reps": _exercises[i].reps,
+          "restSec": _exercises[i].restSec,
+        },
+    ];
   }
 
   Future<void> _saveRoutine() async {
@@ -477,6 +455,7 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
         _lastCreatedRoutineId = routineId;
         setState(() => _isCreateMode = false);
         _resetDraft();
+        // ✅ _loadMyRoutines nettoie _optimisticCreatedRoutine si la routine est confirmée
         await _loadMyRoutines();
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -501,8 +480,9 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF16161D),
-        title: const Text("Supprimer ?", style: TextStyle(color: Colors.white)),
+        backgroundColor: AppColors.surfaceAlt,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+        title: const Text("Supprimer ?", style: TextStyle(color: AppColors.textPrimary)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -512,7 +492,7 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text(
               "Supprimer",
-              style: TextStyle(color: Colors.redAccent),
+              style: TextStyle(color: AppColors.danger),
             ),
           ),
         ],
@@ -558,7 +538,7 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
     }
     final draftExercises = _extractDraftExercisesFromApi(routineData);
     setState(() {
-      _currentTabIndex = 2; // ✅ Mes routines
+      _currentTabIndex = 2;
       _isCreateMode = true;
       _editingRoutineId = id;
       _titleCtrl.text = _routineTitle(routineData);
@@ -614,8 +594,9 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
   }
 
   // =========================
-  // PARSING
+  // PARSING HELPERS
   // =========================
+
   Map<String, dynamic> _mapify(dynamic value) {
     if (value is Map<String, dynamic>) return value;
     if (value is Map) return value.cast<String, dynamic>();
@@ -636,9 +617,7 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
     required int fallback,
   }) {
     final v = value ?? fallback;
-    if (v < min) return min;
-    if (v > max) return max;
-    return v;
+    return v.clamp(min, max);
   }
 
   String _routineTitle(dynamic routine) =>
@@ -650,8 +629,7 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
   Future<void> _startRoutine(dynamic routine) async {
     final id = _routineId(routine);
     final name = _routineTitle(routine);
-    if (id == null) return;
-    if (!mounted) return;
+    if (id == null || !mounted) return;
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -749,15 +727,7 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
       children: [
         const Padding(
           padding: EdgeInsets.fromLTRB(16, 24, 16, 0),
-          child: Text(
-            "ENTRAÎNEMENT",
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w900,
-              color: Colors.white,
-              letterSpacing: 0.5,
-            ),
-          ),
+          child: PageHeader(title: "Entraînement"),
         ),
         const SizedBox(height: 16),
         SingleChildScrollView(
@@ -786,7 +756,7 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
             ],
           ),
         ),
-        Divider(height: 1, thickness: 1, color: Colors.white.withOpacity(0.08)),
+        const Divider(height: 1, thickness: 1, color: AppColors.line),
       ],
     );
   }
@@ -824,140 +794,66 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
       children: [
         Padding(
           padding: const EdgeInsets.only(right: 16.0),
-          child: ElevatedButton.icon(
+          child: PrimaryButton(
+            label: "Crée tes entraînements",
+            icon: Icons.fitness_center_rounded,
             onPressed: _enterCreateMode,
-            icon: const Icon(
-              Icons.fitness_center_rounded,
-              color: Colors.white,
-              size: 20,
-            ),
-            label: const Text(
-              "CRÉE TES ENTRAÎNEMENTS",
-              style: TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 13,
-                letterSpacing: 0.5,
-              ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: purpleButton,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              elevation: 0,
-            ),
           ),
         ),
         const SizedBox(height: 32),
-
-        // --- SECTION : GROUPES MUSCULAIRES ---
-        Padding(
-          padding: const EdgeInsets.only(right: 16.0),
-          child: Text(
-            "PAR GROUPE MUSCULAIRE",
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w900,
-              color: Colors.white.withOpacity(0.9),
-              letterSpacing: 0.5,
-            ),
-          ),
-        ),
+        _buildSectionTitle("PAR GROUPE MUSCULAIRE"),
         const SizedBox(height: 16),
-        SizedBox(
-          height: 280,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            itemCount: _muscleCategories.length,
-            itemBuilder: (context, index) {
-              final cat = _muscleCategories[index];
-              final title = cat['title'] as String;
-              final keys = (cat['keys'] as List).cast<String>();
-
-              final finalImgUrl = _getImageForGroup(title);
-              final count = _countRoutinesForCategory(keys);
-              final desc = _getCategoryDescription(title);
-
-              return _CategoryHorizontalCard(
-                title: title,
-                description: desc,
-                variationsCount: count,
-                averageTime: "45 min",
-                imgUrl: finalImgUrl,
-                fallbackIcon: _getIconForCategory(title),
-                isFavorite: _favoriteCategoryTitles.contains(title),
-                onFavoriteTap: () => _toggleCategoryFavorite(title),
-                onTap: () => _openCategoryConfig(title, keys),
-              );
-            },
-          ),
-        ),
-
+        _buildCategoryRow(_muscleCategories),
         const SizedBox(height: 32),
-
-        // --- SECTION : AUTRES ---
-        Padding(
-          padding: const EdgeInsets.only(right: 16.0),
-          child: Text(
-            "AUTRES",
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w900,
-              color: Colors.white.withOpacity(0.9),
-              letterSpacing: 0.5,
-            ),
-          ),
-        ),
+        _buildSectionTitle("AUTRES"),
         const SizedBox(height: 16),
-        SizedBox(
-          height: 280,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            itemCount: _otherCategories.length,
-            itemBuilder: (context, index) {
-              final cat = _otherCategories[index];
-              final title = cat['title'] as String;
-              final keys = (cat['keys'] as List).cast<String>();
-
-              final finalImgUrl = _getImageForGroup(title);
-              final count = _countRoutinesForCategory(keys);
-              final desc = _getCategoryDescription(title);
-
-              return _CategoryHorizontalCard(
-                title: title,
-                description: desc,
-                variationsCount: count,
-                averageTime: "45 min",
-                imgUrl: finalImgUrl,
-                fallbackIcon: _getIconForCategory(title),
-                isFavorite: _favoriteCategoryTitles.contains(title),
-                onFavoriteTap: () => _toggleCategoryFavorite(title),
-                onTap: () => _openCategoryConfig(title, keys),
-              );
-            },
-          ),
-        ),
+        _buildCategoryRow(_otherCategories),
       ],
     );
   }
 
+  Widget _buildSectionTitle(String label) => Padding(
+    padding: const EdgeInsets.only(right: 16.0),
+    child: SectionHeader(title: label),
+  );
+
+  Widget _buildCategoryRow(List<Map<String, dynamic>> categories) {
+    return SizedBox(
+      height: 280,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: categories.length,
+        itemBuilder: (context, index) {
+          final cat = categories[index];
+          final title = cat['title'] as String;
+          final keys = (cat['keys'] as List).cast<String>();
+          return _CategoryHorizontalCard(
+            title: title,
+            description: _getCategoryDescription(title),
+            variationsCount: _countRoutinesForCategory(keys),
+            averageTime: "45 min",
+            imgUrl: _getImageForGroup(title),
+            fallbackIcon: _getIconForCategory(title),
+            isFavorite: _favoriteCategoryTitles.contains(title),
+            onFavoriteTap: () => _toggleCategoryFavorite(title),
+            onTap: () => _openCategoryConfig(title, keys),
+          );
+        },
+      ),
+    );
+  }
+
   // =========================
-  // ONGLET 2 : FAVORIS (catégories)
+  // ONGLET 2 : FAVORIS
   // =========================
 
   Widget _buildFavoritesTab() {
     final favCats = _favoriteCategories();
-
     return RefreshIndicator(
       color: clubOrange,
-      backgroundColor: const Color(0xFF1A1A22),
-      onRefresh: () async {
-        await _loadCatalogRoutines();
-      },
+      backgroundColor: AppColors.surfaceAlt,
+      onRefresh: _loadCatalogRoutines,
       child: ListView(
         key: const ValueKey('favorites_tab'),
         physics: const AlwaysScrollableScrollPhysics(
@@ -970,28 +866,19 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
           170 + MediaQuery.of(context).padding.bottom,
         ),
         children: [
-          Text(
-            "FAVORIS",
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.92),
-              fontWeight: FontWeight.w900,
-              fontSize: 14,
-              letterSpacing: 0.6,
-            ),
-          ),
+          const SectionHeader(title: "Favoris"),
           const SizedBox(height: 16),
-
-          if (_isLoadingCatalog) ...[
-            const Center(child: CircularProgressIndicator(color: clubOrange)),
-          ] else if (favCats.isEmpty) ...[
+          if (_isLoadingCatalog)
+            const Center(child: CircularProgressIndicator(color: clubOrange))
+          else if (favCats.isEmpty)
             Text(
-              "Aucune catégorie en favoris pour l’instant.",
+              "Aucune catégorie en favoris pour l'instant.",
               style: TextStyle(
                 color: Colors.white.withOpacity(0.55),
                 fontWeight: FontWeight.w600,
               ),
-            ),
-          ] else ...[
+            )
+          else
             SizedBox(
               height: 280,
               child: ListView.builder(
@@ -1000,19 +887,14 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
                 itemCount: favCats.length,
                 itemBuilder: (context, index) {
                   final cat = favCats[index];
-                  final title = (cat['title'] as String);
+                  final title = cat['title'] as String;
                   final keys = (cat['keys'] as List).cast<String>();
-
-                  final img = _getImageForGroup(title);
-                  final count = _countRoutinesForCategory(keys);
-                  final desc = _getCategoryDescription(title);
-
                   return _CategoryHorizontalCard(
                     title: title,
-                    description: desc,
-                    variationsCount: count,
+                    description: _getCategoryDescription(title),
+                    variationsCount: _countRoutinesForCategory(keys),
                     averageTime: "45 min",
-                    imgUrl: img,
+                    imgUrl: _getImageForGroup(title),
                     fallbackIcon: _getIconForCategory(title),
                     isFavorite: true,
                     onFavoriteTap: () => _toggleCategoryFavorite(title),
@@ -1021,14 +903,13 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
                 },
               ),
             ),
-          ],
         ],
       ),
     );
   }
 
   // =========================
-  // ONGLET 3 : MES ROUTINES (HUB)
+  // ONGLET 3 : MES ROUTINES
   // =========================
 
   Widget _buildMyRoutinesHub() {
@@ -1064,7 +945,7 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
 
     return RefreshIndicator(
       color: clubOrange,
-      backgroundColor: const Color(0xFF1A1A22),
+      backgroundColor: AppColors.surfaceAlt,
       onRefresh: _loadMyRoutines,
       child: ListView(
         key: const ValueKey('my_routines_tab'),
@@ -1081,23 +962,15 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              TextButton.icon(
+              GhostButton(
+                label: "Nouvelle routine",
+                icon: Icons.add_rounded,
                 onPressed: _enterCreateMode,
-                icon: const Icon(
-                  Icons.add_rounded,
-                  color: clubOrange,
-                  size: 18,
-                ),
-                label: const Text(
-                  "Nouvelle routine",
-                  style: TextStyle(
-                    color: clubOrange,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
+                color: AppColors.accent,
               ),
             ],
           ),
+          const SizedBox(height: 8),
           ...routines.map((r) => _buildRoutineCardItem(r)),
         ],
       ),
@@ -1106,21 +979,12 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
 
   Widget _buildRoutineCardItem(dynamic routine) {
     final title = _routineTitle(routine);
-
     final m = _mapify(routine);
     String categoryString = (m['muscleGroup'] ?? m['category'] ?? '')
         .toString();
-
-    if (categoryString.isEmpty || categoryString == 'null') {
+    if (categoryString.isEmpty || categoryString == 'null')
       categoryString = title;
-    }
 
-    final categoryForIcon = categoryString;
-    final String imgUrl = _getImageForGroup(categoryString);
-
-    // =========================
-    // CALCULS (Stats Routine)
-    // =========================
     int exCount = _toInt(m['exerciseCount']) ?? 0;
     int tSets = 0;
     int tDurationSec = 0;
@@ -1128,14 +992,12 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
     final rawExercises = m['exercises'];
     if (rawExercises is List) {
       if (exCount == 0) exCount = rawExercises.length;
-
       for (final raw in rawExercises) {
         final exMap = _mapify(raw);
         final sets = _toInt(exMap['sets']) ?? 1;
         final reps = _toInt(exMap['reps']) ?? _toInt(exMap['repsMax']) ?? 10;
         final rest =
             _toInt(exMap['restSec']) ?? _toInt(exMap['restSeconds']) ?? 60;
-
         tSets += sets;
         tDurationSec += sets * ((reps * 4) + rest);
       }
@@ -1151,8 +1013,8 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
         exerciseCount: exCount,
         totalSets: tSets,
         durationMin: dMin,
-        imgUrl: imgUrl,
-        categoryForIcon: categoryForIcon,
+        imgUrl: _getImageForGroup(categoryString),
+        categoryForIcon: categoryString,
         accent: clubOrange,
         isFullWidth: true,
         onTap: () => _startRoutine(routine),
@@ -1186,21 +1048,15 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
         ),
         const SizedBox(height: 16),
         if (_exercises.isNotEmpty) ...[
-          const Text(
-            "EXERCICES AJOUTÉS",
-            style: TextStyle(
-              color: Colors.white70,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.8,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 10),
+          const SectionHeader(title: "Exercices ajoutés"),
+          const SizedBox(height: 14),
           ...List.generate(_exercises.length, (index) {
             final e = _exercises[index];
             return _ExerciseDraftCard(
               index: index,
               exercise: e,
+              isFirst: index == 0,
+              isLast: index == _exercises.length - 1,
               onRemove: () => _removeExercise(index),
               onMoveUp: () => _moveUp(index),
               onMoveDown: () => _moveDown(index),
@@ -1212,9 +1068,8 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
                 if (e.reps > 1) e.reps -= 1;
               }),
               onRepsPlus: () => setState(() => e.reps += 1),
-              onRestMinus: () => setState(() {
-                if (e.restSec > 0) e.restSec = (e.restSec - 5).clamp(0, 999);
-              }),
+              onRestMinus: () =>
+                  setState(() => e.restSec = (e.restSec - 5).clamp(0, 999)),
               onRestPlus: () => setState(() => e.restSec += 5),
             );
           }),
@@ -1222,19 +1077,19 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
         ],
         OutlinedButton.icon(
           style: OutlinedButton.styleFrom(
-            foregroundColor: Colors.white,
-            side: BorderSide(color: Colors.white.withOpacity(0.15)),
-            backgroundColor: Colors.white.withOpacity(0.03),
+            foregroundColor: AppColors.textPrimary,
+            side: const BorderSide(color: AppColors.line),
+            backgroundColor: AppColors.surface,
             padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
           ),
           onPressed: _openExercisePicker,
           icon: const Icon(Icons.add_circle_outline_rounded, color: clubOrange),
           label: const Text(
-            "AJOUTER UN EXERCICE",
-            style: TextStyle(fontWeight: FontWeight.w900),
+            "Ajouter un exercice",
+            style: TextStyle(fontWeight: FontWeight.w700),
           ),
         ),
       ],
@@ -1272,17 +1127,15 @@ class _CustomTab extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          if (isActive)
-            Container(
-              height: 3,
-              width: 40,
-              decoration: BoxDecoration(
-                color: clubOrange,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            )
-          else
-            const SizedBox(height: 3),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            height: 3,
+            width: isActive ? 40 : 0,
+            decoration: BoxDecoration(
+              color: clubOrange,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
         ],
       ),
     );
@@ -1292,6 +1145,7 @@ class _CustomTab extends StatelessWidget {
 // =====================
 // CARTE CATALOGUE (GLASSMORPHISM)
 // =====================
+
 class _CategoryHorizontalCard extends StatelessWidget {
   final String title;
   final String description;
@@ -1315,6 +1169,12 @@ class _CategoryHorizontalCard extends StatelessWidget {
     this.onFavoriteTap,
   });
 
+  // ✅ FIX BUG 1 — Widget fallback extrait pour éviter les paramètres dupliqués
+  Widget _fallback() => Container(
+    color: softBorder,
+    child: Icon(fallbackIcon, size: 40, color: textSecondary.withOpacity(0.5)),
+  );
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1323,7 +1183,7 @@ class _CategoryHorizontalCard extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -1332,29 +1192,15 @@ class _CategoryHorizontalCard extends StatelessWidget {
                   ? Image.network(
                       imgUrl,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Container(
-                        color: softBorder,
-                        child: Icon(
-                          fallbackIcon,
-                          size: 40,
-                          color: textSecondary.withOpacity(0.5),
-                        ),
-                      ),
+                      errorBuilder: (ctx, err, st) => _fallback(),
                     )
                   : Image.asset(
                       imgUrl,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Container(
-                        color: softBorder,
-                        child: Icon(
-                          fallbackIcon,
-                          size: 40,
-                          color: textSecondary.withOpacity(0.5),
-                        ),
-                      ),
+                      errorBuilder: (ctx, err, st) => _fallback(),
                     ),
 
-              // 2. Dégradé sombre pour la lisibilité
+              // 2. Dégradé sombre
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -1377,7 +1223,7 @@ class _CategoryHorizontalCard extends StatelessWidget {
                   child: GestureDetector(
                     onTap: onFavoriteTap,
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
                       child: BackdropFilter(
                         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                         child: Container(
@@ -1386,7 +1232,7 @@ class _CategoryHorizontalCard extends StatelessWidget {
                             color: isFavorite
                                 ? clubOrange.withOpacity(0.8)
                                 : Colors.black.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
                             border: Border.all(
                               color: isFavorite
                                   ? clubOrange
@@ -1421,9 +1267,8 @@ class _CategoryHorizontalCard extends StatelessWidget {
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        fontStyle: FontStyle.italic,
-                        letterSpacing: 0.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.2,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -1484,7 +1329,7 @@ class _CategoryHorizontalCard extends StatelessWidget {
 }
 
 // =====================
-// CARTE ROUTINE CLASSIQUE (MES ROUTINES - GLASSMORPHISM)
+// CARTE ROUTINE (MES ROUTINES - GLASSMORPHISM)
 // =====================
 
 class _WorkoutCard extends StatelessWidget {
@@ -1519,31 +1364,30 @@ class _WorkoutCard extends StatelessWidget {
   IconData _getFallbackIcon() {
     final c = categoryForIcon.toLowerCase();
     if (c.contains('pec') || c.contains('push')) return Icons.fitness_center;
-    if (c.contains('dos') || c.contains('back') || c.contains('pull')) {
+    if (c.contains('dos') || c.contains('back') || c.contains('pull'))
       return Icons.accessibility_new_rounded;
-    }
-    if (c.contains('jambe') || c.contains('leg') || c.contains('bas')) {
+    if (c.contains('jambe') || c.contains('leg') || c.contains('bas'))
       return Icons.directions_run_rounded;
-    }
-    if (c.contains('bras') || c.contains('arm') || c.contains('biceps')) {
+    if (c.contains('bras') || c.contains('arm') || c.contains('biceps'))
       return Icons.sports_gymnastics_rounded;
-    }
-    if (c.contains('triceps') || c.contains('avant')) {
+    if (c.contains('triceps') || c.contains('avant'))
       return Icons.sports_gymnastics_rounded;
-    }
-    if (c.contains('epaule') || c.contains('épaule')) {
+    if (c.contains('epaule') || c.contains('épaule'))
       return Icons.accessibility_rounded;
-    }
     if (c.contains('abdo')) return Icons.sports_martial_arts_rounded;
-    if (c.contains('cardio') || c.contains('run')) {
+    if (c.contains('cardio') || c.contains('run'))
       return Icons.monitor_heart_rounded;
-    }
     if (c.contains('mobil')) return Icons.self_improvement_rounded;
-    if (c.contains('perte') || c.contains('poids')) {
+    if (c.contains('perte') || c.contains('poids'))
       return Icons.monitor_weight_rounded;
-    }
     return Icons.fitness_center_rounded;
   }
+
+  // ✅ FIX BUG 1 — Widget fallback extrait pour éviter les paramètres dupliqués
+  Widget _fallback() => Container(
+    color: softBorder,
+    child: Icon(_getFallbackIcon(), color: textSecondary, size: 40),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -1551,13 +1395,13 @@ class _WorkoutCard extends StatelessWidget {
         onEdit != null || onDuplicate != null || onDelete != null;
 
     return Container(
-      height: 190, // ✅ Hauteur imposée pour l'effet expand
+      height: 190,
       width: isFullWidth ? double.infinity : 260,
       margin: EdgeInsets.only(right: isFullWidth ? 0 : 12),
       child: GestureDetector(
         onTap: onTap,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -1566,26 +1410,12 @@ class _WorkoutCard extends StatelessWidget {
                   ? Image.network(
                       imgUrl,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Container(
-                        color: softBorder,
-                        child: Icon(
-                          _getFallbackIcon(),
-                          color: textSecondary,
-                          size: 40,
-                        ),
-                      ),
+                      errorBuilder: (ctx, err, st) => _fallback(),
                     )
                   : Image.asset(
                       imgUrl,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Container(
-                        color: softBorder,
-                        child: Icon(
-                          _getFallbackIcon(),
-                          color: textSecondary,
-                          size: 40,
-                        ),
-                      ),
+                      errorBuilder: (ctx, err, st) => _fallback(),
                     ),
 
               // 2. Dégradé
@@ -1609,7 +1439,7 @@ class _WorkoutCard extends StatelessWidget {
                   top: 12,
                   right: 12,
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
                     child: BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                       child: Container(
@@ -1617,14 +1447,18 @@ class _WorkoutCard extends StatelessWidget {
                         width: 36,
                         decoration: BoxDecoration(
                           color: Colors.black.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
                           border: Border.all(
                             color: Colors.white.withOpacity(0.2),
                           ),
                         ),
                         child: PopupMenuButton<int>(
                           padding: EdgeInsets.zero,
-                          color: const Color(0xFF17171F),
+                          color: AppColors.surfaceAlt,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
+                            side: const BorderSide(color: AppColors.line),
+                          ),
                           icon: const Icon(
                             Icons.more_vert_rounded,
                             color: Colors.white,
@@ -1640,21 +1474,21 @@ class _WorkoutCard extends StatelessWidget {
                               value: 1,
                               child: Text(
                                 "Modifier",
-                                style: TextStyle(color: Colors.white),
+                                style: TextStyle(color: AppColors.textPrimary),
                               ),
                             ),
                             PopupMenuItem(
                               value: 2,
                               child: Text(
                                 "Dupliquer",
-                                style: TextStyle(color: Colors.white),
+                                style: TextStyle(color: AppColors.textPrimary),
                               ),
                             ),
                             PopupMenuItem(
                               value: 3,
                               child: Text(
                                 "Supprimer",
-                                style: TextStyle(color: Colors.redAccent),
+                                style: TextStyle(color: AppColors.danger),
                               ),
                             ),
                           ],
@@ -1668,7 +1502,7 @@ class _WorkoutCard extends StatelessWidget {
               Positioned(
                 left: 16,
                 right: 16,
-                bottom: 56, // Remonté pour laisser la place au bouton Lancer
+                bottom: 56,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1679,8 +1513,8 @@ class _WorkoutCard extends StatelessWidget {
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.2,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -1696,46 +1530,33 @@ class _WorkoutCard extends StatelessWidget {
                 ),
               ),
 
-              // 5. Bouton d'action "LANCER" (Glass)
+              // 5. Bouton "LANCER" (Glass)
               Positioned(
                 left: 16,
                 bottom: 12,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(99),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(99),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.2),
+                child: GlassSurface(
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.play_arrow_rounded, color: accent, size: 16),
+                      const SizedBox(width: 4),
+                      const Text(
+                        "LANCER",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          shadows: [
+                            Shadow(color: Colors.black45, blurRadius: 4, offset: Offset(0, 1)),
+                          ],
                         ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.play_arrow_rounded,
-                            color: accent,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 4),
-                          const Text(
-                            "LANCER",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    ],
                   ),
                 ),
               ),
@@ -1748,7 +1569,7 @@ class _WorkoutCard extends StatelessWidget {
 }
 
 // =====================
-// AUTRES COMPOSANTS DRAFT
+// BOUTON PRINCIPAL
 // =====================
 
 class _PrimaryActionButton extends StatelessWidget {
@@ -1778,15 +1599,21 @@ class _PrimaryActionButton extends StatelessWidget {
       style: ElevatedButton.styleFrom(
         backgroundColor: clubOrange,
         padding: const EdgeInsets.symmetric(vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
       ),
     ),
   );
 }
 
+// =====================
+// CARTE EXERCICE DRAFT
+// =====================
+
 class _ExerciseDraftCard extends StatelessWidget {
   final int index;
   final _DraftRoutineExercise exercise;
+  final bool isFirst;
+  final bool isLast;
   final VoidCallback onRemove;
   final VoidCallback onMoveUp;
   final VoidCallback onMoveDown;
@@ -1800,6 +1627,8 @@ class _ExerciseDraftCard extends StatelessWidget {
   const _ExerciseDraftCard({
     required this.index,
     required this.exercise,
+    required this.isFirst,
+    required this.isLast,
     required this.onRemove,
     required this.onMoveUp,
     required this.onMoveDown,
@@ -1816,21 +1645,26 @@ class _ExerciseDraftCard extends StatelessWidget {
     margin: const EdgeInsets.only(bottom: 12),
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
-      color: Colors.white.withOpacity(0.03),
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: Colors.white.withOpacity(0.06)),
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      border: Border.all(color: AppColors.line),
     ),
     child: Column(
       children: [
         Row(
           children: [
-            CircleAvatar(
-              radius: 14,
-              backgroundColor: clubOrange.withOpacity(0.15),
+            Container(
+              width: 28,
+              height: 28,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+                border: Border.all(color: AppColors.line),
+              ),
               child: Text(
                 "${index + 1}",
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: AppColors.accent,
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
                 ),
@@ -1858,10 +1692,29 @@ class _ExerciseDraftCard extends StatelessWidget {
                 ],
               ),
             ),
+            // ✅ FIX BUG 2 — Boutons de réordonnancement ajoutés
+            if (!isFirst)
+              IconButton(
+                onPressed: onMoveUp,
+                icon: const Icon(Icons.keyboard_arrow_up_rounded, size: 20),
+                color: Colors.white54,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+            if (!isLast)
+              IconButton(
+                onPressed: onMoveDown,
+                icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+                color: Colors.white54,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
             IconButton(
               onPressed: onRemove,
               icon: const Icon(Icons.delete_outline_rounded),
-              color: Colors.redAccent,
+              color: AppColors.danger,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
             ),
           ],
         ),
@@ -1901,6 +1754,10 @@ class _ExerciseDraftCard extends StatelessWidget {
   );
 }
 
+// =====================
+// MINI COUNTER
+// =====================
+
 class _MiniCounter extends StatelessWidget {
   final String label;
   final int value;
@@ -1919,7 +1776,7 @@ class _MiniCounter extends StatelessWidget {
     padding: const EdgeInsets.symmetric(vertical: 8),
     decoration: BoxDecoration(
       color: Colors.black.withOpacity(0.20),
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(AppRadius.sm),
     ),
     child: Column(
       children: [
@@ -1967,18 +1824,34 @@ class _MiniCounter extends StatelessWidget {
   );
 }
 
+// =====================
+// INPUT DECORATION
+// =====================
+
 InputDecoration _darkInput({required String hint, required IconData icon}) =>
     InputDecoration(
       hintText: hint,
-      hintStyle: TextStyle(color: Colors.white.withOpacity(0.45)),
+      hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.7)),
       filled: true,
-      fillColor: Colors.white.withOpacity(0.04),
-      prefixIcon: Icon(icon, color: Colors.white70),
+      fillColor: AppColors.surface,
+      prefixIcon: Icon(icon, color: AppColors.textSecondary),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide.none,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderSide: const BorderSide(color: AppColors.line),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderSide: const BorderSide(color: AppColors.line),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderSide: const BorderSide(color: AppColors.accent),
       ),
     );
+
+// =====================
+// MODÈLES LÉGERS
+// =====================
 
 class _ExerciseLite {
   final int id;
@@ -2011,7 +1884,7 @@ class _DraftRoutineExercise {
 }
 
 // =====================
-// ÉCRAN DE SÉLECTION D'EXERCICE (Branché sur API)
+// ÉCRAN SÉLECTION EXERCICE
 // =====================
 
 class ExercisePickerScreen extends StatefulWidget {
@@ -2024,7 +1897,6 @@ class ExercisePickerScreen extends StatefulWidget {
 class _ExercisePickerScreenState extends State<ExercisePickerScreen> {
   String _searchQuery = "";
   String _selectedCategory = "Tout";
-
   bool _isLoading = true;
   List<_ExerciseLite> _allExercises = [];
 
@@ -2034,34 +1906,28 @@ class _ExercisePickerScreenState extends State<ExercisePickerScreen> {
     _fetchExercises();
   }
 
-  // ✅ APPEL À TON API VIA ROUTINESERVICE
   Future<void> _fetchExercises() async {
     try {
       final data = await RoutineService().getAllExercises();
-
       if (!mounted) return;
-
-      final List<_ExerciseLite> loadedExercises = [];
-
+      final List<_ExerciseLite> loaded = [];
       for (final item in data) {
         if (item is Map) {
           final id = _toInt(item['id']) ?? 0;
           final name = (item['name'] ?? 'Exercice sans nom').toString();
           final muscleGroup =
               (item['muscleGroup'] ?? item['category'] ?? 'Autre').toString();
-
-          loadedExercises.add(
+          loaded.add(
             _ExerciseLite(id: id, name: name, muscleGroup: muscleGroup),
           );
         }
       }
-
       setState(() {
-        _allExercises = loadedExercises;
+        _allExercises = loaded;
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint("Erreur lors du chargement des exercices : $e");
+      debugPrint("Erreur chargement exercices : $e");
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2080,32 +1946,23 @@ class _ExercisePickerScreenState extends State<ExercisePickerScreen> {
 
   List<String> get _categories {
     final set = <String>{"Tout"};
-    for (var e in _allExercises) {
-      if (e.muscleGroup.isNotEmpty) {
-        set.add(e.muscleGroup);
-      }
+    for (final e in _allExercises) {
+      if (e.muscleGroup.isNotEmpty) set.add(e.muscleGroup);
     }
     return set.toList();
   }
 
-  List<_ExerciseLite> get _filteredExercises {
-    return _allExercises.where((e) {
-      final matchesSearch = e.name.toLowerCase().contains(
-        _searchQuery.toLowerCase(),
-      );
-      final matchesCat =
-          _selectedCategory == "Tout" || e.muscleGroup == _selectedCategory;
-      return matchesSearch && matchesCat;
-    }).toList();
-  }
+  List<_ExerciseLite> get _filteredExercises => _allExercises.where((e) {
+    final matchesSearch = e.name.toLowerCase().contains(
+      _searchQuery.toLowerCase(),
+    );
+    final matchesCat =
+        _selectedCategory == "Tout" || e.muscleGroup == _selectedCategory;
+    return matchesSearch && matchesCat;
+  }).toList();
 
   @override
   Widget build(BuildContext context) {
-    const Color clubOrange = Color(0xFFF57809);
-    const Color darkBg = Color(0xFF000000);
-    const Color surfaceColor = Color(0xFF222222);
-    const Color textSecondary = Color(0xFFA0A5B1);
-
     final filtered = _filteredExercises;
     final categories = _categories;
 
@@ -2128,7 +1985,7 @@ class _ExercisePickerScreenState extends State<ExercisePickerScreen> {
           ? const Center(child: CircularProgressIndicator(color: clubOrange))
           : Column(
               children: [
-                // --- BARRE DE RECHERCHE ---
+                // Barre de recherche
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: TextField(
@@ -2146,7 +2003,7 @@ class _ExercisePickerScreenState extends State<ExercisePickerScreen> {
                         color: textSecondary,
                       ),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                         borderSide: BorderSide.none,
                       ),
                       contentPadding: const EdgeInsets.symmetric(vertical: 0),
@@ -2154,7 +2011,7 @@ class _ExercisePickerScreenState extends State<ExercisePickerScreen> {
                   ),
                 ),
 
-                // --- FILTRES CATÉGORIES ---
+                // Filtres catégories
                 if (categories.length > 1)
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
@@ -2176,11 +2033,11 @@ class _ExercisePickerScreenState extends State<ExercisePickerScreen> {
                               ),
                               decoration: BoxDecoration(
                                 color: isSelected ? clubOrange : surfaceColor,
-                                borderRadius: BorderRadius.circular(99),
+                                borderRadius: BorderRadius.circular(AppRadius.pill),
                                 border: Border.all(
                                   color: isSelected
                                       ? clubOrange
-                                      : Colors.white.withOpacity(0.1),
+                                      : AppColors.line,
                                 ),
                               ),
                               child: Text(
@@ -2203,7 +2060,7 @@ class _ExercisePickerScreenState extends State<ExercisePickerScreen> {
                   ),
                 const SizedBox(height: 16),
 
-                // --- LISTE DES EXERCICES ---
+                // Liste des exercices
                 Expanded(
                   child: filtered.isEmpty
                       ? const Center(
@@ -2230,32 +2087,19 @@ class _ExercisePickerScreenState extends State<ExercisePickerScreen> {
                               margin: const EdgeInsets.only(bottom: 12),
                               decoration: BoxDecoration(
                                 color: surfaceColor,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.05),
-                                ),
+                                borderRadius: BorderRadius.circular(AppRadius.md),
+                                border: Border.all(color: AppColors.line),
                               ),
                               child: ListTile(
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 16,
                                   vertical: 4,
                                 ),
-                                onTap: () {
-                                  // ✅ Renvoie l'exercice sélectionné à la page de création
-                                  Navigator.pop(context, exercise);
-                                },
-                                leading: Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.05),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Icon(
-                                    Icons.fitness_center_rounded,
-                                    color: clubOrange,
-                                    size: 20,
-                                  ),
+                                onTap: () => Navigator.pop(context, exercise),
+                                leading: const Icon(
+                                  Icons.fitness_center_rounded,
+                                  color: clubOrange,
+                                  size: 22,
                                 ),
                                 title: Text(
                                   exercise.name,

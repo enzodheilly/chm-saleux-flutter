@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart'; // ✅ ajoute l'import
+import '../theme/app_theme.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -33,7 +34,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF06060B),
+      backgroundColor: AppColors.bg,
       body: Center(
         child: TweenAnimationBuilder<double>(
           tween: Tween<double>(begin: 0, end: 1),
@@ -51,9 +52,9 @@ class _SplashScreenState extends State<SplashScreen> {
           child: const Text(
             "CHM SALEUX",
             style: TextStyle(
-              color: Colors.white,
+              color: AppColors.textPrimary,
               fontSize: 32,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w800,
               letterSpacing: 2.0,
               fontFamily: 'Roboto',
             ),

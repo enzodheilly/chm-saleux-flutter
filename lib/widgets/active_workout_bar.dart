@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/workout_manager.dart';
 import '../screens/workout_player_screen.dart';
+import '../theme/app_theme.dart';
 
-const Color clubOrange = Color(0xFFF57809);
-const Color surfaceColor = Color(0xFF1C1C22);
+const Color clubOrange = AppColors.accent;
+const Color surfaceColor = AppColors.surfaceAlt;
 
 class ActiveWorkoutBar extends StatelessWidget {
   const ActiveWorkoutBar({super.key});
@@ -37,7 +38,7 @@ class ActiveWorkoutBar extends StatelessWidget {
               );
             },
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                 child: Container(
@@ -48,9 +49,9 @@ class ActiveWorkoutBar extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: surfaceColor.withOpacity(0.85),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.05),
+                      color: AppColors.line,
                       width: 1,
                     ),
                     boxShadow: [
@@ -76,9 +77,9 @@ class ActiveWorkoutBar extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               softWrap: false,
                               style: const TextStyle(
-                                color: Colors.white,
+                                color: AppColors.textPrimary,
                                 fontSize: 14,
-                                fontWeight: FontWeight.w900,
+                                fontWeight: FontWeight.w800,
                                 letterSpacing: 0.5,
                               ),
                             ),
@@ -93,12 +94,12 @@ class ActiveWorkoutBar extends StatelessWidget {
                                 const SizedBox(width: 4),
                                 Text(
                                   "En cours • ${_formatTime(manager.seconds)}",
-                                  style: TextStyle(
-                                    color: Colors.white.withOpacity(0.8),
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
                                     // Empêche les chiffres de "danser" quand les secondes défilent
-                                    fontFeatures: const [
+                                    fontFeatures: [
                                       FontFeature.tabularFigures(),
                                     ],
                                   ),
@@ -138,14 +139,7 @@ class _ResumePill extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: clubOrange,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: clubOrange.withOpacity(0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
       child: const Row(
         mainAxisSize: MainAxisSize.min,
@@ -153,14 +147,14 @@ class _ResumePill extends StatelessWidget {
           Text(
             "REPRENDRE",
             style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
+              color: AppColors.bg,
+              fontWeight: FontWeight.w800,
               fontSize: 11,
               letterSpacing: 0.8,
             ),
           ),
           SizedBox(width: 6),
-          Icon(Icons.play_arrow_rounded, color: Colors.white, size: 16),
+          Icon(Icons.play_arrow_rounded, color: AppColors.bg, size: 16),
         ],
       ),
     );

@@ -49,6 +49,9 @@ app.*.map.json
 .env
 .env.*
 
+# Identifiants de dev pour l'autofill du login (--dart-define-from-file)
+dev.json
+
 # Signatures de l'application (Android)
 *.keystore
 *.jks
